@@ -6,7 +6,7 @@
 
 There is a bash installation script for Ubuntu 16.04+ and MacOS 10.10+ which can be used to checkout and build the project from source:
 
-`$ curl -sL "https://raw.githubusercontent.com/bitcoinnova/bitcoinnova/master/scripts/multi_installer.sh" | bash `
+`$ curl -sL "https://raw.githubusercontent.com/BitcoinNova/bitcoinnova/master/scripts/multi_installer.sh" | bash `
 
 On Ubuntu you will be asked for sudo rights to install software. The binaries will be in `./src` after compilation is complete.
 
@@ -27,7 +27,7 @@ The following images are known to work.
 
 ##### Building
 
-- `git clone -b master --single-branch https://github.com/Bitcoin-N/bitcoinnova`
+- `git clone -b master --single-branch https://github.com/BitcoinNova/bitcoinnova`
 - `cd bitcoinnova`
 - `mkdir build && cd $_`
 - `cmake ..`
@@ -43,7 +43,7 @@ The following images are known to work.
 
 ##### Building
 
-- `git clone -b master --single-branch https://github.com/Bitcoin-N/bitcoinnova`
+- `git clone -b master --single-branch https://github.com/BitcoinNova/bitcoinnova`
 - `cd bitcoinnova`
 - `mkdir build && cd $_`
 - `cmake ..`
@@ -59,7 +59,7 @@ The following images are known to work.
 
 ##### Building
 
-- `git clone -b master https://github.com/Bitcoin-N/bitcoinnova`
+- `git clone -b master https://github.com/BitcoinNova/bitcoinnova`
 - `cd bitcoinnova`
 - `mkdir build && cd $_`
 - `cmake ..` or `cmake -DBOOST_ROOT=<path_to_boost_install> ..` when building
@@ -94,7 +94,7 @@ Cryptonote Developers, Bytecoin Developers, Monero Developers, Forknote Project,
 
 ### Copypasta for license when editing files
 
-Hi Bitcoinnova contributor, thanks for forking and sending back Pull Requests. Extensive docs about contributing are in the works or elsewhere. For now this is the bit we need to get into all the files we touch. Please add it to the top of the files, see [src/CryptoNoteConfig.h](https://github.com/Bitcoin-N/bitcoinnova/commit/28cfef2575f2d767f6e512f2a4017adbf44e610e) for an example.
+Hi Bitcoinnova contributor, thanks for forking and sending back Pull Requests. Extensive docs about contributing are in the works or elsewhere. For now this is the bit we need to get into all the files we touch. Please add it to the top of the files, see [src/CryptoNoteConfig.h](https://github.com/BitcoinNova/bitcoinnova/commit/28cfef2575f2d767f6e512f2a4017adbf44e610e) for an example.
 
 ```
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
