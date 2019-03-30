@@ -1,18 +1,13 @@
-# daemon runs in the background
-# run something like tail /var/log/bitcoinnovad/current to see the status
-# be sure to run with volumes, ie:
-# docker run -v $(pwd)/bitcoinnovad:/var/lib/bitcoinnovad -v $(pwd)/wallet:/home/bitcoinnova --rm -ti bitcoinnova:0.2.2
-ARG base_image_version=0.10.0
-FROM phusion/baseimage:$base_image_version
+FROM ubuntu:18.04 as builder
 
-ADD https://github.com/just-containers/s6-overlay/releases/download/v1.21.2.2/s6-overlay-amd64.tar.gz /tmp/
-RUN tar xzf /tmp/s6-overlay-amd64.tar.gz -C /
+# Allows us to auto-discover the latest release from the repo
+ARG REPO=BitcoinNova/bitcoinnova_0.12.0.1280
+ENV REPO=${REPO}
 
-ADD https://github.com/just-containers/socklog-overlay/releases/download/v2.1.0-0/socklog-overlay-amd64.tar.gz /tmp/
-RUN tar xzf /tmp/socklog-overlay-amd64.tar.gz -C /
-
-ARG BITCOINNOVA_BRANCH=master
-ENV BITCOINNOVA_BRANCH=${BITCOINNOVA_BRANCH}
+# BUILD_DATE and VCS_REF are immaterial, since this is a 2-stage build, but our build
+# hook won't work unless we specify the args
+ARG BUILD_DATE
+ARG VCS_REF
 
 # install build dependencies
 # checkout the latest tag
@@ -20,63 +15,47 @@ ENV BITCOINNOVA_BRANCH=${BITCOINNOVA_BRANCH}
 RUN apt-get update && \
     apt-get install -y \
       build-essential \
+      curl \
       python-dev \
-      gcc-4.9 \
-      g++-4.9 \
-      git cmake \
-      libboost1.58-all-dev && \
-    git clone https://github.com/bitcoinnova/bitcoinnova.git /src/bitcoinnova && \
-    cd /src/bitcoinnova && \
-    git checkout $BITCOINNOVA_BRANCH && \
+      gcc-8 \
+      g++-8 \
+      git \
+      cmake \
+      libboost-all-dev
+
+RUN TAG=$(curl -L --silent "https://api.github.com/repos/$REPO/releases/latest" | grep -Po '"tag_name": "\K.*?(?=")') && \
+    git clone --single-branch --branch $TAG https://github.com/$REPO /opt/bitcoinnova && \
+    cd /opt/bitcoinnova && \
     mkdir build && \
     cd build && \
-    cmake -DCMAKE_CXX_FLAGS="-g0 -Os -fPIC -std=gnu++11" .. && \
-    make -j$(nproc) && \
-    mkdir -p /usr/local/bin && \
-    cp src/Bitcoinnovad /usr/local/bin/Bitcoinnovad && \
-    cp src/walletd /usr/local/bin/walletd && \
-    cp src/zedwallet /usr/local/bin/zedwallet && \
-    cp src/miner /usr/local/bin/miner && \
-    strip /usr/local/bin/Bitcoinnovad && \
-    strip /usr/local/bin/walletd && \
-    strip /usr/local/bin/zedwallet && \
-    strip /usr/local/bin/miner && \
-    cd / && \
-    rm -rf /src/bitcoinnova && \
-    apt-get remove -y build-essential python-dev gcc-4.9 g++-4.9 git cmake libboost1.58-all-dev librocksdb-dev && \
-    apt-get autoremove -y && \
-    apt-get install -y  \
-      libboost-system1.58.0 \
-      libboost-filesystem1.58.0 \
-      libboost-thread1.58.0 \
-      libboost-date-time1.58.0 \
-      libboost-chrono1.58.0 \
-      libboost-regex1.58.0 \
-      libboost-serialization1.58.0 \
-      libboost-program-options1.58.0 \
-      libicu55
+    export CXXFLAGS="-w -std=gnu++11" && \
+    #cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && \
+    cmake .. && \
+    make -j$(nproc)
 
-# setup the bitcoinnovad service
-RUN useradd -r -s /usr/sbin/nologin -m -d /var/lib/bitcoinnovad bitcoinnovad && \
-    useradd -s /bin/bash -m -d /home/bitcoinnova bitcoinnova && \
-    mkdir -p /etc/services.d/bitcoinnovad/log && \
-    mkdir -p /var/log/bitcoinnovad && \
-    echo "#!/usr/bin/execlineb" > /etc/services.d/bitcoinnovad/run && \
-    echo "fdmove -c 2 1" >> /etc/services.d/bitcoinnovad/run && \
-    echo "cd /var/lib/bitcoinnovad" >> /etc/services.d/bitcoinnovad/run && \
-    echo "export HOME /var/lib/bitcoinnovad" >> /etc/services.d/bitcoinnovad/run && \
-    echo "s6-setuidgid bitcoinnovad /usr/local/bin/Bitcoinnovad" >> /etc/services.d/bitcoinnovad/run && \
-    chmod +x /etc/services.d/bitcoinnovad/run && \
-    chown nobody:nogroup /var/log/bitcoinnovad && \
-    echo "#!/usr/bin/execlineb" > /etc/services.d/bitcoinnovad/log/run && \
-    echo "s6-setuidgid nobody" >> /etc/services.d/bitcoinnovad/log/run && \
-    echo "s6-log -bp -- n20 s1000000 /var/log/bitcoinnovad" >> /etc/services.d/bitcoinnovad/log/run && \
-    chmod +x /etc/services.d/bitcoinnovad/log/run && \
-    echo "/var/lib/bitcoinnovad true bitcoinnovad 0644 0755" > /etc/fix-attrs.d/bitcoinnovad-home && \
-    echo "/home/bitcoinnova true bitcoinnova 0644 0755" > /etc/fix-attrs.d/bitcoinnova-home && \
-    echo "/var/log/bitcoinnovad true nobody 0644 0755" > /etc/fix-attrs.d/bitcoinnovad-logs
+FROM keymetrics/pm2:latest-stretch 
 
-VOLUME ["/var/lib/bitcoinnovad", "/home/bitcoinnova","/var/log/bitcoinnovad"]
+# Now we DO need these, for the auto-labeling of the image
+ARG BUILD_DATE
+ARG VCS_REF
 
-ENTRYPOINT ["/init"]
-CMD ["/usr/bin/execlineb", "-P", "-c", "emptyenv cd /home/bitcoinnova export HOME /home/bitcoinnova s6-setuidgid bitcoinnova /bin/bash"]
+# Good docker practice, plus we get microbadger badges
+LABEL org.label-schema.build-date=$BUILD_DATE \
+      org.label-schema.vcs-url="https://github.com/BitcoinNova/bitcoinnova_0.12.0.1280.git" \
+      org.label-schema.vcs-ref=$VCS_REF \
+      org.label-schema.schema-version="2.2-r1"
+
+RUN mkdir -p /usr/local/bin
+WORKDIR /usr/local/bin
+COPY --from=builder /opt/bitcoinnova/build/src/Bitcoinnovad .
+COPY --from=builder /opt/bitcoinnova/build/src/Bitcoinnova-service .
+COPY --from=builder /opt/bitcoinnova/build/src/zedwallet .
+COPY --from=builder /opt/bitcoinnova/build/src/miner .
+COPY --from=builder /opt/bitcoinnova/build/src/wallet-api .
+COPY --from=builder /opt/bitcoinnova/build/src/cryptotest .
+COPY --from=builder /opt/bitcoinnova/build/src/zedwallet-beta .
+RUN mkdir -p /var/lib/bitcoinnovad
+WORKDIR /var/lib/bitcoinnovad
+ADD https://github.com/bitcoinnova/checkpoints/raw/master/checkpoints.csv /var/lib/bitcoinnovad
+ENTRYPOINT ["/usr/local/bin/Bitcoinnovad"]
+CMD ["--no-console","--data-dir","/var/lib/Bitcoinnovad","--rpc-bind-ip","0.0.0.0","--rpc-bind-port","45223","--p2p-bind-port","45222","--enable-cors=*","--enable-blockexplorer","--load-checkpoints","/var/lib/bitcoinnovad/checkpoints.csv"]

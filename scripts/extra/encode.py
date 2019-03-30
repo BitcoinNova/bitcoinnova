@@ -3,8 +3,10 @@ import ujson as json
 import sys
 import binascii
 
-to_address = "BTNv3xYqUdAy4K8viYjNnMj21NLohHbf9ut2Cczxyh96d74TzxNgdB3aZbb9U2ZJ1DVmVpbDwzH77821o9ciNYQVaSt3V6bu7R"
+to_address = "EAsX15ieXY1NAk9Yu3NoVBfBqUgsFPsv47Ff4W1t491vHiD8fyGHD7nR7gVk1FrcbP2d2mJfBt3M45NgbV6ZRcSdHixcSPH"
 content = """
+Bitcoin Nova -->
+"""
 
 def rpc(method, params={}):
     base_url = "http://localhost:8070/json_rpc"
@@ -33,7 +35,7 @@ r = rpc("sendTransaction", {
         "address": to_address,
     }],
     "fee": 10,
-    "anonymity": 7,
+    "anonymity": 3,
     "extra": binascii.hexlify(content.encode()).decode()
 })
 print(r)

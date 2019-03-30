@@ -2,31 +2,31 @@ version: '3'
 
 services:
   node1:
-    image: funkypenguin/Bitcoinnova
-    container_name: turtletest-node1
+    image: funkypenguin/bitcoinnova
+    container_name: bitcoinnovatest-node1
     volumes:
-      - ../Bitcoinnovad:/var/lib/Bitcoinnovad/
+      - ../bitcoinnovad:/var/lib/Bitcoinnovad/
     networks:
       testnet:
         ipv4_address: 172.16.76.11
   
 #  node2:
-#    image: funkypenguin/Bitcoinnova
-#    container_name: Bitcoinnovatest-node2
+#    image: funkypenguin/bitcoinnova
+#    container_name: bitcoinnovatest-node2
 #    networks:
 #      testnet:
 #        ipv4_address: 172.16.76.12
   
 #  node3:
-#    image: funkypenguin/Bitcoinnova
-#    container_name: Bitcoinnovatest-node3
+#    image: funkypenguin/bitcoinnova
+#    container_name: bitcoinnovatest-node3
 #    networks:
 #      testnet:
-#        ipv4_address: 182.16.76.13
+#        ipv4_address: 172.16.76.13
 
 networks:
   testnet:
     ipam:
       config:
-        - subnet: 182.16.76.0/24
+        - subnet: 172.16.76.0/24
 

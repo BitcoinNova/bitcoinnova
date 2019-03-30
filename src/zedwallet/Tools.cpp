@@ -1,5 +1,5 @@
-// Copyright (c) 2018, The Bitcoin Nova Developers
-//
+// Copyright (c) 2018, The TurtleCoin Developers
+// 
 // Please see the included LICENSE file for more information.
 
 ////////////////////////////
@@ -19,9 +19,9 @@
 
 #include <iostream>
 
-#include <zedwallet/ColouredMsg.h>
+#include <Utilities/ColouredMsg.h>
 #include <zedwallet/PasswordContainer.h>
-#include <zedwallet/WalletConfig.h>
+#include <config/WalletConfig.h>
 
 void confirmPassword(const std::string &walletPass, const std::string &msg)
 {
@@ -67,9 +67,9 @@ std::string formatDollars(const uint64_t amount)
     /* We want to format our number with comma separators so it's easier to
        use. Now, we could use the nice print_money() function to do this.
        However, whilst this initially looks pretty handy, if we have a locale
-       such as ja_JP.utf8, 1 BTN will actually be formatted as 100 BTN, which
+       such as ja_JP.utf8, 1 TRTL will actually be formatted as 100 TRTL, which
        is terrible, and could really screw over users.
-       
+
        So, easy solution right? Just use en_US.utf8! Sure, it's not very
        international, but it'll work! Unfortunately, no. The user has to have
        the locale installed, and if they don't, we get a nasty error at
@@ -79,7 +79,7 @@ std::string formatDollars(const uint64_t amount)
        using the locale method, without writing a pretty long boiler plate
        function. So, instead, we define our own locale, which just returns
        the values we want.
-
+       
        It's less internationally friendly than we would potentially like
        but that would require a ton of scrutinization which if not done could
        land us with quite a few issues and rightfully angry users.
@@ -304,4 +304,108 @@ bool fileExists(const std::string &filename)
 {
     /* Bool conversion needs an explicit cast */
     return static_cast<bool>(std::ifstream(filename));
+}
+
+bool shutdown(std::shared_ptr<WalletInfo> walletInfo, CryptoNote::INode &node,
+              bool &alreadyShuttingDown)
+{
+    if (alreadyShuttingDown)
+    {
+        std::cout << "Patience little turtle, we're already shutting down!" 
+                  << std::endl;
+
+        return false;
+    }
+
+    std::cout << InformationMsg("Shutting down...") << std::endl;
+
+    alreadyShuttingDown = true;
+
+    bool finishedShutdown = false;
+
+    std::thread timelyShutdown([&finishedShutdown]
+    {
+        const auto startTime = std::chrono::system_clock::now();
+
+        /* Has shutdown finished? */
+        while (!finishedShutdown)
+        {
+            const auto currentTime = std::chrono::system_clock::now();
+
+            /* If not, wait for a max of 20 seconds then force exit. */
+            if ((currentTime - startTime) > std::chrono::seconds(20))
+            {
+                std::cout << WarningMsg("Wallet took too long to save! "
+                                        "Force closing.") << std::endl
+                          << "Bye." << std::endl;
+                exit(0);
+            }
+
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+    });
+
+    if (walletInfo != nullptr)
+    {
+        std::cout << InformationMsg("Saving wallet file...") << std::endl;
+
+        walletInfo->wallet.save();
+
+        std::cout << InformationMsg("Shutting down wallet interface...")
+                  << std::endl;
+
+        walletInfo->wallet.shutdown();
+    }
+
+    std::cout << InformationMsg("Shutting down node connection...")
+              << std::endl;
+
+    node.shutdown();
+
+    finishedShutdown = true;
+
+    /* Wait for shutdown watcher to finish */
+    timelyShutdown.join();
+
+    std::cout << "Bye." << std::endl;
+    
+    return true;
+}
+
+std::vector<std::string> split(const std::string& str, char delim = ' ')
+{
+    std::vector<std::string> cont;
+    std::stringstream ss(str);
+    std::string token;
+    while (std::getline(ss, token, delim)) {
+        cont.push_back(token);
+    }
+    return cont;
+}
+
+bool parseDaemonAddressFromString(std::string& host, int& port, const std::string& address)
+{
+    std::vector<std::string> parts = split(address, ':');
+
+    if (parts.empty())
+    {
+        return false;
+    }
+    else if (parts.size() >= 2)
+    {
+        try
+        {
+            host = parts.at(0);
+            port = std::stoi(parts.at(1));
+            return true;
+        }
+        catch (const std::invalid_argument&)
+        {
+          return false;
+        }
+    }
+
+    host = parts.at(0);
+    port = CryptoNote::RPC_DEFAULT_PORT;
+    return true;
 }

@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2018, The Monero Project
-// Copyright (c) 2018, The Bitcoin Nova Developers
+// Copyright (c) 2018, The TurtleCoin Developers
 //
 // Please see the included LICENSE file for more information.
 
@@ -20,7 +20,7 @@ class WalletService;
 
 class PaymentServiceJsonRpcServer : public CryptoNote::JsonRpcServer {
 public:
-  PaymentServiceJsonRpcServer(System::Dispatcher& sys, System::Event& stopEvent, WalletService& service, Logging::ILogger& loggerGroup, PaymentService::Configuration& config);
+  PaymentServiceJsonRpcServer(System::Dispatcher& sys, System::Event& stopEvent, WalletService& service, std::shared_ptr<Logging::ILogger> loggerGroup, PaymentService::ConfigurationManager& config);
   PaymentServiceJsonRpcServer(const PaymentServiceJsonRpcServer&) = delete;
 
 protected:
@@ -59,25 +59,25 @@ private:
   }
 
   template <typename RequestType>
-   void SerializeRequest(RequestType &request, CryptoNote::JsonInputValueSerializer &inputSerializer)
-   {
-       serialize(request, inputSerializer);
-   }
+  void SerializeRequest(RequestType &request, CryptoNote::JsonInputValueSerializer &inputSerializer)
+  {
+      serialize(request, inputSerializer);
+  }
 
-    void SerializeRequest(SendTransaction::Request &request, CryptoNote::JsonInputValueSerializer &inputSerializer)
-   {
-       request.serialize(inputSerializer, service);
-   }
+  void SerializeRequest(SendTransaction::Request &request, CryptoNote::JsonInputValueSerializer &inputSerializer)
+  {
+      request.serialize(inputSerializer, service);
+  }
 
-    void SerializeRequest(CreateDelayedTransaction::Request &request, CryptoNote::JsonInputValueSerializer &inputSerializer)
-   {
-       request.serialize(inputSerializer, service);
-   }
-   
-    void SerializeRequest(SendFusionTransaction::Request &request, CryptoNote::JsonInputValueSerializer &inputSerializer)
-   {
-       request.serialize(inputSerializer, service);
-   }
+  void SerializeRequest(CreateDelayedTransaction::Request &request, CryptoNote::JsonInputValueSerializer &inputSerializer)
+  {
+      request.serialize(inputSerializer, service);
+  }
+
+  void SerializeRequest(SendFusionTransaction::Request &request, CryptoNote::JsonInputValueSerializer &inputSerializer)
+  {
+      request.serialize(inputSerializer, service);
+  }
 
   std::unordered_map<std::string, HandlerFunction> handlers;
 
@@ -95,10 +95,10 @@ private:
   std::error_code handleGetUnconfirmedTransactionHashes(const GetUnconfirmedTransactionHashes::Request& request, GetUnconfirmedTransactionHashes::Response& response);
   std::error_code handleGetTransaction(const GetTransaction::Request& request, GetTransaction::Response& response);
   std::error_code handleSendTransaction(SendTransaction::Request& request, SendTransaction::Response& response);
-  std::error_code handleCreateDelayedTransaction(const CreateDelayedTransaction::Request& request, CreateDelayedTransaction::Response& response);
+  std::error_code handleCreateDelayedTransaction(CreateDelayedTransaction::Request& request, CreateDelayedTransaction::Response& response);
   std::error_code handleGetDelayedTransactionHashes(const GetDelayedTransactionHashes::Request& request, GetDelayedTransactionHashes::Response& response);
   std::error_code handleDeleteDelayedTransaction(const DeleteDelayedTransaction::Request& request, DeleteDelayedTransaction::Response& response);
-  std::error_code handleSendDelayedTransaction(const SendDelayedTransaction::Request& request, SendDelayedTransaction::Response& response);
+  std::error_code handleSendDelayedTransaction(SendDelayedTransaction::Request& request, SendDelayedTransaction::Response& response);
   std::error_code handleGetViewKey(const GetViewKey::Request& request, GetViewKey::Response& response);
   std::error_code handleGetMnemonicSeed(const GetMnemonicSeed::Request& request, GetMnemonicSeed::Response& response);
   std::error_code handleGetStatus(const GetStatus::Request& request, GetStatus::Response& response);

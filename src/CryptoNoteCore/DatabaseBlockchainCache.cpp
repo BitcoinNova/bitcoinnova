@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2018, The Monero Project
-// Copyright (c) 2018, The Bitcoin Nova Developers
+// Copyright (c) 2018, The TurtleCoin Developers
 //
 // Please see the included LICENSE file for more information.
 
@@ -425,7 +425,7 @@ struct DatabaseBlockchainCache::ExtendedPushedBlockInfo {
 };
 
 
-DatabaseBlockchainCache::DatabaseBlockchainCache(const Currency& curr, IDataBase& dataBase, IBlockchainCacheFactory& blockchainCacheFactory, Logging::ILogger& _logger)
+DatabaseBlockchainCache::DatabaseBlockchainCache(const Currency& curr, IDataBase& dataBase, IBlockchainCacheFactory& blockchainCacheFactory, std::shared_ptr<Logging::ILogger> _logger)
     : currency(curr), database(dataBase), blockchainCacheFactory(blockchainCacheFactory), logger(_logger, "DatabaseBlockchainCache") {
   DatabaseVersionReadBatch readBatch;
   auto ec = database.read(readBatch);
@@ -452,7 +452,7 @@ DatabaseBlockchainCache::DatabaseBlockchainCache(const Currency& curr, IDataBase
   }
 }
 
-bool DatabaseBlockchainCache::checkDBSchemeVersion(IDataBase& database, Logging::ILogger& _logger) {
+bool DatabaseBlockchainCache::checkDBSchemeVersion(IDataBase& database, std::shared_ptr<Logging::ILogger> _logger) {
   Logging::LoggerRef logger(_logger, "DatabaseBlockchainCache");
 
   DatabaseVersionReadBatch readBatch;
@@ -1041,6 +1041,8 @@ uint8_t DatabaseBlockchainCache::getBlockMajorVersionForHeight(uint32_t height) 
   UpgradeManager upgradeManager;
   upgradeManager.addMajorBlockVersion(BLOCK_MAJOR_VERSION_2, currency.upgradeHeight(BLOCK_MAJOR_VERSION_2));
   upgradeManager.addMajorBlockVersion(BLOCK_MAJOR_VERSION_3, currency.upgradeHeight(BLOCK_MAJOR_VERSION_3));
+  upgradeManager.addMajorBlockVersion(BLOCK_MAJOR_VERSION_4, currency.upgradeHeight(BLOCK_MAJOR_VERSION_4));
+  upgradeManager.addMajorBlockVersion(BLOCK_MAJOR_VERSION_5, currency.upgradeHeight(BLOCK_MAJOR_VERSION_5));
   return upgradeManager.getBlockMajorVersion(height);
 }
 
@@ -1343,6 +1345,28 @@ size_t DatabaseBlockchainCache::getKeyOutputsCountForAmount(uint64_t amount, uin
   return result;
 }
 
+std::tuple<bool, uint64_t> DatabaseBlockchainCache::getBlockHeightForTimestamp(uint64_t timestamp) const
+{
+    const auto midnight = roundToMidnight(timestamp);
+
+    const auto [blockHeight, success] = requestClosestBlockIndexByTimestamp(midnight, database);
+
+    /* Failed to read from DB */
+    if (!success)
+    {
+        logger(Logging::DEBUGGING) << "getTimestampLowerBoundBlockIndex failed: failed to read database";
+        throw std::runtime_error("Couldn't get closest to timestamp block index");
+    }
+
+    /* Failed to find the block height with this timestamp */
+    if (!blockHeight)
+    {
+        return {false, 0};
+    }
+
+    return {true, *blockHeight};
+}
+
 uint32_t DatabaseBlockchainCache::getTimestampLowerBoundBlockIndex(uint64_t timestamp) const {
   auto midnight = roundToMidnight(timestamp);
 
@@ -1606,6 +1630,44 @@ std::vector<Crypto::Hash> DatabaseBlockchainCache::getBlockHashesByTimestamps(ui
   }
 
   return blockHashes;
+}
+
+std::vector<RawBlock> DatabaseBlockchainCache::getBlocksByHeight(
+    const uint64_t startHeight, uint64_t endHeight) const
+{
+    auto blockBatch = BlockchainReadBatch().requestRawBlocks(startHeight, endHeight);
+
+    /* Get the info from the DB */
+    auto rawBlocks = readDatabase(blockBatch).getRawBlocks();
+
+    std::vector<RawBlock> orderedBlocks;
+
+    /* Order, and convert from map, to vector */
+    for (uint64_t height = startHeight; height < startHeight + rawBlocks.size(); height++)
+    {
+        orderedBlocks.push_back(rawBlocks.at(height));
+    }
+
+    return orderedBlocks;
+}
+
+std::unordered_map<Crypto::Hash, std::vector<uint64_t>> DatabaseBlockchainCache::getGlobalIndexes(
+    const std::vector<Crypto::Hash> transactionHashes) const
+{
+    auto txBatch = BlockchainReadBatch().requestCachedTransactions(transactionHashes);
+
+    database.read(txBatch);
+
+    auto txs = txBatch.extractResult().getCachedTransactions();
+
+    std::unordered_map<Crypto::Hash, std::vector<uint64_t>> indexes;
+
+    for (const auto [txHash, transaction] : txs)
+    {
+        indexes[txHash].assign(transaction.globalIndexes.begin(), transaction.globalIndexes.end());
+    }
+
+    return indexes;
 }
 
 DatabaseBlockchainCache::ExtendedPushedBlockInfo DatabaseBlockchainCache::getExtendedPushedBlockInfo(uint32_t blockIndex) const {

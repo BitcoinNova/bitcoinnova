@@ -4,17 +4,13 @@ set(UPNPC_BUILD_TESTS OFF CACHE BOOL "Build test executables")
 set(WITH_MD_LIBRARY OFF CACHE BOOL "Code Generation for static library")
 
 add_subdirectory(miniupnpc)
-
-if (DO_TESTS)
-  add_subdirectory(gtest)
-endif()
+add_subdirectory(cryptopp)
 
 if(MSVC)
-    include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR} ../version)
     add_subdirectory(rocksDB EXCLUDE_FROM_ALL)
-    set_property(TARGET upnpc-static rocksdb PROPERTY FOLDER "external")
+    set_property(TARGET upnpc-static cryptopp-static rocksdb PROPERTY FOLDER "external")
 elseif(NOT MSVC)
-    set_property(TARGET upnpc-static PROPERTY FOLDER "external")
+    set_property(TARGET upnpc-static cryptopp-static PROPERTY FOLDER "external")
     add_custom_target(
        rocksdb
        COMMAND $(MAKE) rocksdb
@@ -25,12 +21,9 @@ elseif(NOT MSVC)
     add_dependencies(rocksdblib rocksdb)
 endif()
 
-if(DO_TESTS)
-  set_property(TARGET gtest gtest_main PROPERTY FOLDER "external")
-endif()
-
 if(MSVC)
   set_property(TARGET upnpc-static APPEND_STRING PROPERTY COMPILE_FLAGS " -wd4244 -wd4267")
 elseif(NOT MSVC)
   set_property(TARGET upnpc-static APPEND_STRING PROPERTY COMPILE_FLAGS " -Wno-undef -Wno-unused-result -Wno-unused-value")
 endif()
+

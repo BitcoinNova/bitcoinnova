@@ -1,5 +1,5 @@
-// Copyright (c) 2018, The Bitcoin Nova Developers
-//
+// Copyright (c) 2018, The TurtleCoin Developers
+// 
 // Please see the included LICENSE file for more information.
 
 #pragma once
@@ -12,6 +12,3 @@ int main(int argc, char **argv);
 
 void run(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node,
          Config &config);
-
-bool shutdown(std::shared_ptr<WalletInfo> walletInfo, CryptoNote::INode &node,
-              bool &alreadyShuttingDown);
