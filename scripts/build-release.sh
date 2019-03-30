@@ -8,7 +8,7 @@ BUILD_DIRECTORY=$2
 function usage()
 {
     echo "This script builds the dynamically and statically linked version"
-    echo "and generates the checksum files of the Bitcoinnova tag provided."
+    echo "and generates the checksum files of the TurtleCoin tag provided."
     echo
     echo "USAGE: $0 <tag> <build-directory>"
     echo
@@ -115,7 +115,7 @@ then
 fi
 
 # -- Config
-GITHUB_REPO="https://github.com/bitcoinnova/bitcoinnova.git"
+GITHUB_REPO="https://github.com/BitcoinNova/bitcoinnova.git"
 CLONE_DIR="$BUILD_DIRECTORY/bitcoinnova-buildall"
 TARGET_DIR="$BUILD_DIRECTORY/bitcoinnova-releases"
 DYNAMIC_RELEASE="bitcoinnova-${TAG_VERSION}-linux-CLI"

@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2018, The Monero Project
-// Copyright (c) 2018, The Bitcoin Nova Developers
+// Copyright (c) 2018, The TurtleCoin Developers
 // 
 // Please see the included LICENSE file for more information.#pragma once
 
@@ -44,7 +44,7 @@ namespace Crypto {
   inline void generate_chacha8_key(const std::string& password, chacha8_key& key) {
     static_assert(sizeof(chacha8_key) <= sizeof(Hash), "Size of hash must be at least that of chacha8_key");
     Hash pwd_hash;
-    cn_slow_hash_v6(password.data(), password.size(), pwd_hash);
+    cn_slow_hash_v0(password.data(), password.size(), pwd_hash);
     memcpy(&key, &pwd_hash, sizeof(key));
     memset(&pwd_hash, 0, sizeof(pwd_hash));
   }

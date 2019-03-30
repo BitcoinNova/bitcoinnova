@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2018, The Monero Project
-// Copyright (c) 2018, The Bitcoin Nova Developers
+// Copyright (c) 2018, The TurtleCoin Developers
 //
 // Please see the included LICENSE file for more information.
 
@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <sstream>
 #include <unordered_set>
+#include <tuple>
 
 #include <boost/filesystem/operations.hpp>
 
@@ -26,6 +27,7 @@
 #include "CryptoNoteCore/CryptoNoteTools.h"
 #include "CryptoNoteCore/TransactionExtra.h"
 #include "CryptoNoteCore/Account.h"
+#include "CryptoNoteCore/Mixins.h"
 
 #include <System/EventLock.h>
 #include <System/RemoteContext.h>
@@ -34,7 +36,6 @@
 #include "NodeFactory.h"
 
 #include "Wallet/WalletGreen.h"
-#include "Wallet/LegacyKeysImporter.h"
 #include "Wallet/WalletErrors.h"
 #include "Wallet/WalletUtils.h"
 #include "WalletServiceErrorCategory.h"
@@ -162,6 +163,8 @@ void validatePaymentId(const std::string& paymentId, Logging::LoggerRef logger) 
   }
 }
 
+
+
 Crypto::Hash parseHash(const std::string& hashString, Logging::LoggerRef logger) {
   Crypto::Hash hash;
 
@@ -273,38 +276,49 @@ void validateAddresses(const std::vector<std::string>& addresses, const CryptoNo
   }
 }
 
-void validateMixin(const uint32_t mixin, const uint32_t height, Logging::LoggerRef logger) {
-    uint64_t minMixin = 0;
-    uint64_t maxMixin = std::numeric_limits<uint64_t>::max();
+std::tuple<std::string, std::string> decodeIntegratedAddress(const std::string& integratedAddr, const CryptoNote::Currency& currency, Logging::LoggerRef logger) {
+    std::string decoded;
+    uint64_t prefix;
 
-    if (height >= CryptoNote::parameters::MIXIN_LIMITS_V3_HEIGHT)
+    /* Need to be able to decode the string as an address */
+    if (!Tools::Base58::decode_addr(integratedAddr, prefix, decoded))
     {
-        minMixin = CryptoNote::parameters::MINIMUM_MIXIN_V3;
-        maxMixin = CryptoNote::parameters::MAXIMUM_MIXIN_V3;
-    }
-    else if (height >= CryptoNote::parameters::MIXIN_LIMITS_V2_HEIGHT)
-    {
-        minMixin = CryptoNote::parameters::MINIMUM_MIXIN_V2;
-        maxMixin = CryptoNote::parameters::MAXIMUM_MIXIN_V2;
-    }
-    else if (height >= CryptoNote::parameters::MIXIN_LIMITS_V1_HEIGHT)
-    {
-        minMixin = CryptoNote::parameters::MINIMUM_MIXIN_V1;
-        maxMixin = CryptoNote::parameters::MAXIMUM_MIXIN_V1;
+        throw std::system_error(make_error_code(CryptoNote::error::BAD_ADDRESS));
     }
 
-    if (mixin < minMixin)
+    /* The prefix needs to be the same as the base58 prefix */
+    if (prefix !=
+        CryptoNote::parameters::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX)
     {
-        logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Mixin of " << mixin
-            << " under minimum mixin threshold of " << minMixin;
-        throw std::system_error(make_error_code(CryptoNote::error::MIXIN_BELOW_THRESHOLD));
+        throw std::system_error(make_error_code(CryptoNote::error::BAD_ADDRESS));
     }
-    else if (mixin > maxMixin)
+
+    const uint64_t paymentIDLen = 64;
+    /* Grab the payment ID from the decoded address */
+    std::string paymentID = decoded.substr(0, paymentIDLen);
+
+    /* Check the extracted payment ID is good. */
+    validatePaymentId(paymentID, logger);
+
+    /* The binary array encoded keys are the rest of the address */
+    std::string keys = decoded.substr(paymentIDLen, std::string::npos);
+
+    CryptoNote::AccountPublicAddress addr;
+    CryptoNote::BinaryArray ba = Common::asBinaryArray(keys);
+
+    if (!CryptoNote::fromBinaryArray(addr, ba))
     {
-        logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Mixin of " << mixin
-          << " above maximum mixin threshold of " << maxMixin;
-        throw std::system_error(make_error_code(CryptoNote::error::MIXIN_ABOVE_THRESHOLD));
+        throw std::system_error(make_error_code(CryptoNote::error::BAD_ADDRESS));
     }
+    
+    /* Parse the AccountPublicAddress into a standard wallet address */
+    /* Use the calculated prefix from earlier for less typing :p */
+    std::string address = CryptoNote::getAccountAddressAsStr(prefix, addr);
+    
+    /* Check the extracted address is good. */
+    validateAddresses({address}, currency, logger);
+    
+    return std::make_tuple(address, paymentID);
 }
 
 std::string getValidatedTransactionExtraString(const std::string& extraString) {
@@ -346,7 +360,7 @@ std::vector<CryptoNote::WalletOrder> convertWalletRpcOrdersToWalletOrders(const 
 
 }
 
-void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfiguration& conf, Logging::ILogger& logger, System::Dispatcher& dispatcher) {
+void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfiguration& conf, std::shared_ptr<Logging::ILogger> logger, System::Dispatcher& dispatcher) {
   Logging::LoggerRef log(logger, "generateNewWallet");
 
   CryptoNote::INode* nodeStub = NodeFactory::createNodeStub();
@@ -375,23 +389,22 @@ void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfigu
   {
     log(Logging::INFO, Logging::BRIGHT_WHITE) << "Attempting to import wallet from mnemonic seed";
 
-    Crypto::SecretKey private_spend_key;
-    Crypto::SecretKey private_view_key;
+    auto [error, private_spend_key] = Mnemonics::MnemonicToPrivateKey(conf.mnemonicSeed);
 
-    std::string error;
-
-    std::tie(error, private_spend_key)
-        = Mnemonics::MnemonicToPrivateKey(conf.mnemonicSeed);
-
-    if (!error.empty())
+    if (error)
     {
         log(Logging::ERROR, Logging::BRIGHT_RED) << error;
         return;
     }
 
+    Crypto::SecretKey private_view_key;
+
     CryptoNote::AccountBase::generateViewFromSpend(private_spend_key, private_view_key);
+
     wallet->initializeWithViewKey(conf.walletFile, conf.walletPassword, private_view_key, conf.scanHeight, false);
+
     address = wallet->createAddress(private_spend_key, conf.scanHeight, false);
+
     log(Logging::INFO, Logging::BRIGHT_WHITE) << "Imported wallet successfully.";
   }
   else
@@ -406,7 +419,7 @@ void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfigu
 		  log(Logging::INFO, Logging::BRIGHT_WHITE) << "Attemping to import wallet from keys";
 		  Crypto::Hash private_spend_key_hash;
 		  Crypto::Hash private_view_key_hash;
-		  size_t size;
+		  uint64_t size;
 		  if (!Common::fromHex(conf.secretSpendKey, &private_spend_key_hash, sizeof(private_spend_key_hash), size) || size != sizeof(private_spend_key_hash)) {
 			  log(Logging::ERROR, Logging::BRIGHT_RED) << "Invalid spend key";
 			  return;
@@ -429,7 +442,7 @@ void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfigu
 }
 
 WalletService::WalletService(const CryptoNote::Currency& currency, System::Dispatcher& sys, CryptoNote::INode& node,
-  CryptoNote::IWallet& wallet, CryptoNote::IFusionManager& fusionManager, const WalletConfiguration& conf, Logging::ILogger& logger) :
+  CryptoNote::IWallet& wallet, CryptoNote::IFusionManager& fusionManager, const WalletConfiguration& conf, std::shared_ptr<Logging::ILogger> logger) :
     currency(currency),
     wallet(wallet),
     fusionManager(fusionManager),
@@ -578,35 +591,6 @@ std::error_code WalletService::resetWallet(const uint64_t scanHeight) {
     return x.code();
   } catch (std::exception& x) {
     logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while resetting wallet: " << x.what();
-    return make_error_code(CryptoNote::error::INTERNAL_WALLET_ERROR);
-  }
-
-  return std::error_code();
-}
-
-std::error_code WalletService::replaceWithNewWallet(const std::string& viewSecretKeyText, const uint64_t scanHeight, const bool newAddress) {
-  try {
-    System::EventLock lk(readyEvent);
-
-    Crypto::SecretKey viewSecretKey;
-    if (!Common::podFromHex(viewSecretKeyText, viewSecretKey)) {
-      logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Cannot restore view secret key: " << viewSecretKeyText;
-      return make_error_code(CryptoNote::error::WalletServiceErrorCode::WRONG_KEY_FORMAT);
-    }
-
-    Crypto::PublicKey viewPublicKey;
-    if (!Crypto::secret_key_to_public_key(viewSecretKey, viewPublicKey)) {
-      logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Cannot derive view public key, wrong secret key: " << viewSecretKeyText;
-      return make_error_code(CryptoNote::error::WalletServiceErrorCode::WRONG_KEY_FORMAT);
-    }
-
-    replaceWithNewWallet(viewSecretKey, scanHeight, newAddress);
-    logger(Logging::INFO, Logging::BRIGHT_WHITE) << "The container has been replaced";
-  } catch (std::system_error& x) {
-    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while replacing container: " << x.what();
-    return x.code();
-  } catch (std::exception& x) {
-    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while replacing container: " << x.what();
     return make_error_code(CryptoNote::error::INTERNAL_WALLET_ERROR);
   }
 
@@ -993,30 +977,9 @@ std::error_code WalletService::sendTransaction(SendTransaction::Request& request
         /* It's not a standard address. Is it an integrated address? */
         if (!CryptoNote::validateAddress(addr, currency))
         {
-            std::string decoded;
-            uint64_t prefix;
-
-            /* Need to be able to decode the string as an address */
-            if (!Tools::Base58::decode_addr(addr, prefix, decoded))
-            {
-                throw std::system_error(make_error_code(CryptoNote::error::BAD_ADDRESS));
-            }
-
-            /* The prefix needs to be the same as the base58 prefix */
-            if (prefix !=
-                CryptoNote::parameters::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX)
-            {
-                throw std::system_error(make_error_code(CryptoNote::error::BAD_ADDRESS));
-            }
-
-            const uint64_t paymentIDLen = 64;
-
-            /* Grab the payment ID from the decoded address */
-            std::string paymentID = decoded.substr(0, paymentIDLen);
-
-            /* Check the extracted payment ID is good. */
-            validatePaymentId(paymentID, logger);
-
+            std::string address, paymentID;
+            std::tie(address, paymentID) = decodeIntegratedAddress(addr, currency, logger);
+            
             /* A payment ID was specified with the transaction, and it is not
                the same as the decoded one -> we can't send a transaction
                with two different payment ID's! */
@@ -1024,25 +987,7 @@ std::error_code WalletService::sendTransaction(SendTransaction::Request& request
             {
                 throw std::system_error(make_error_code(CryptoNote::error::CONFLICTING_PAYMENT_IDS));
             }
-
-            /* The binary array encoded keys are the rest of the address */
-            std::string keys = decoded.substr(paymentIDLen, std::string::npos);
-
-            CryptoNote::AccountPublicAddress addr;
-            CryptoNote::BinaryArray ba = Common::asBinaryArray(keys);
-
-            if (!CryptoNote::fromBinaryArray(addr, ba))
-            {
-                throw std::system_error(make_error_code(CryptoNote::error::BAD_ADDRESS));
-            }
-
-            /* Parse the AccountPublicAddress into a standard wallet address */
-            /* Use the calculated prefix from earlier for less typing :p */
-            std::string address = CryptoNote::getAccountAddressAsStr(prefix, addr);
-
-            /* Check the extracted address is good. */
-            validateAddresses({address}, currency, logger);
-
+            
             /* Replace the integrated transfer address with the actual
                decoded address */
             transfer.address = address;
@@ -1056,11 +1001,10 @@ std::error_code WalletService::sendTransaction(SendTransaction::Request& request
     if (paymentIDs.size() == 1)
     {
         request.paymentId = paymentIDs[0];
+        
     }
-
-    /* Check we don't have conflicting payment ID's */
-    if (paymentIDs.size() > 1)
-    {
+    else if (paymentIDs.size() > 1)
+    {   
         /* Are all the specified payment IDs equal? */
         if (!std::equal(paymentIDs.begin() + 1, paymentIDs.end(), paymentIDs.begin()))
         {
@@ -1077,7 +1021,13 @@ std::error_code WalletService::sendTransaction(SendTransaction::Request& request
       validateAddresses({ request.changeAddress }, currency, logger);
     }
 
-    validateMixin(request.anonymity, node.getLastKnownBlockHeight(), logger);
+    auto [success, error, error_code] = CryptoNote::Mixins::validate(request.anonymity, node.getLastKnownBlockHeight());
+
+    if (!success)
+    {
+      logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << error;
+      throw std::system_error(error_code);
+    }
 
     CryptoNote::TransactionParameters sendParams;
     if (!request.paymentId.empty()) {
@@ -1108,9 +1058,60 @@ std::error_code WalletService::sendTransaction(SendTransaction::Request& request
   return std::error_code();
 }
 
-std::error_code WalletService::createDelayedTransaction(const CreateDelayedTransaction::Request& request, std::string& transactionHash) {
+std::error_code WalletService::createDelayedTransaction(CreateDelayedTransaction::Request& request, std::string& transactionHash) {
   try {
     System::EventLock lk(readyEvent);
+
+    /* Integrated address payment ID's are uppercase - lets convert the input
+       payment ID to upper so we can compare with more ease */
+    std::transform(request.paymentId.begin(), request.paymentId.end(), request.paymentId.begin(), ::toupper);
+
+    std::vector<std::string> paymentIDs;
+
+    for (auto &transfer : request.transfers)
+    {
+        std::string addr = transfer.address;
+
+        /* It's not a standard address. Is it an integrated address? */
+        if (!CryptoNote::validateAddress(addr, currency))
+        {
+            std::string address, paymentID; 
+            std::tie(address, paymentID) = decodeIntegratedAddress(addr, currency, logger);
+            
+            /* A payment ID was specified with the transaction, and it is not
+               the same as the decoded one -> we can't send a transaction
+               with two different payment ID's! */
+            if (request.paymentId != "" && request.paymentId != paymentID)
+            {
+                throw std::system_error(make_error_code(CryptoNote::error::CONFLICTING_PAYMENT_IDS));
+            }
+            
+            /* Replace the integrated transfer address with the actual
+               decoded address */
+            transfer.address = address;
+
+            paymentIDs.push_back(paymentID);
+        }
+    }
+
+    /* Only one integrated address specified, set the payment ID to the
+       decoded value */
+    if (paymentIDs.size() == 1)
+    {
+        request.paymentId = paymentIDs[0];
+    }
+    else if (paymentIDs.size() > 1)
+    {
+        /* Are all the specified payment IDs equal? */
+        if (!std::equal(paymentIDs.begin() + 1, paymentIDs.end(), paymentIDs.begin()))
+        {
+            throw std::system_error(make_error_code(CryptoNote::error::CONFLICTING_PAYMENT_IDS));
+        }
+
+        /* They are all equal, set the payment ID to the decoded value */
+        request.paymentId = paymentIDs[0];
+    }
+
 
     validateAddresses(request.addresses, currency, logger);
     validateAddresses(collectDestinationAddresses(request.transfers), currency, logger);
@@ -1247,21 +1248,17 @@ std::error_code WalletService::getUnconfirmedTransactionHashes(const std::vector
   return std::error_code();
 }
 
-std::error_code WalletService::getStatus(uint32_t& blockCount, uint32_t& knownBlockCount, std::string& lastBlockHash, uint32_t& peerCount) {
+/* blockCount = the blocks the wallet has synced. knownBlockCount = the top block the daemon knows of. localDaemonBlockCount = the blocks the daemon has synced. */
+std::error_code WalletService::getStatus(uint32_t& blockCount, uint32_t& knownBlockCount, uint64_t& localDaemonBlockCount, std::string& lastBlockHash, uint32_t& peerCount) {
   try {
     System::EventLock lk(readyEvent);
 
-    System::RemoteContext<std::pair<uint32_t, uint32_t>> remoteContext(dispatcher, [this] () {
-      std::pair<uint32_t, uint32_t> res;
-      res.first = node.getKnownBlockCount();
-      res.second = static_cast<uint32_t>(node.getPeerCount());
-
-      return res;
+    System::RemoteContext<std::tuple<uint32_t, uint64_t, uint32_t>> remoteContext(dispatcher, [this] () {
+      /* Daemon remote height, daemon local height, peer count */
+      return std::make_tuple(node.getKnownBlockCount(), node.getNodeHeight(), static_cast<uint32_t>(node.getPeerCount()));
     });
 
-    auto remoteResult = remoteContext.get();
-    knownBlockCount = remoteResult.first;
-    peerCount = remoteResult.second;
+    std::tie(knownBlockCount, localDaemonBlockCount, peerCount) = remoteContext.get();
 
     blockCount = wallet.getBlockCount();
 
@@ -1391,33 +1388,6 @@ void WalletService::refresh() {
 
 void WalletService::reset(const uint64_t scanHeight) {
   wallet.reset(scanHeight);
-}
-
-void WalletService::replaceWithNewWallet(const Crypto::SecretKey& viewSecretKey, const uint64_t scanHeight, const bool newAddress) {
-  wallet.stop();
-  wallet.shutdown();
-  inited = false;
-  refreshContext.wait();
-
-  transactionIdIndex.clear();
-
-  for (size_t i = 0; ; ++i) {
-    boost::system::error_code ec;
-    std::string backup = config.walletFile + ".backup";
-    if (i != 0) {
-      backup += "." + std::to_string(i);
-    }
-
-    if (!boost::filesystem::exists(backup)) {
-      boost::filesystem::rename(config.walletFile, backup);
-      logger(Logging::DEBUGGING) << "Wallet file '" << config.walletFile  << "' backed up to '" << backup << '\'';
-      break;
-    }
-  }
-
-  wallet.start();
-  wallet.initializeWithViewKey(config.walletFile, config.walletPassword, viewSecretKey, scanHeight, newAddress);
-  inited = true;
 }
 
 std::vector<CryptoNote::TransactionsInBlockInfo> WalletService::getTransactions(const Crypto::Hash& blockHash, size_t blockCount) const {

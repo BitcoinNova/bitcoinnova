@@ -1,5 +1,5 @@
-// Copyright (c) 2018, The Bitcoin Nova Developers
-//
+// Copyright (c) 2018, The TurtleCoin Developers
+// 
 // Please see the included LICENSE file for more information.
 
 ///////////////////////////////
@@ -29,7 +29,7 @@ std::string getPrompt(std::shared_ptr<WalletInfo> walletInfo)
     std::string walletName = walletInfo->walletFileName;
 
     /* Filename ends in .wallet, remove extension */
-    if (std::equal(extension.rbegin(), extension.rend(),
+    if (std::equal(extension.rbegin(), extension.rend(), 
                    walletInfo->walletFileName.rbegin()))
     {
         const size_t extPos = walletInfo->walletFileName.find_last_of('.');
@@ -56,7 +56,7 @@ std::string getInputAndWorkInBackground(const std::vector<T> &availableCommands,
     {
         auto lastUpdated = std::chrono::system_clock::now();
 
-        std::future<std::string> inputGetter = std::async(std::launch::async,
+        std::future<std::string> inputGetter = std::async(std::launch::async, 
         [&availableCommands, &prompt]
         {
             return getInput(availableCommands, prompt);
@@ -129,7 +129,7 @@ std::string getInput(const std::vector<T> &availableCommands,
     std::string command;
 
     bool quit = linenoise::Readline(promptMsg.c_str(), command);
-
+	
     /* Remove any whitespace */
     trim(command);
 

@@ -1,5 +1,5 @@
-// Copyright (c) 2018, The Bitcoin Nova Developers
-//
+// Copyright (c) 2018, The TurtleCoin Developers
+// 
 // Please see the included LICENSE file for more information.
 
 #include <zedwallet/Types.h>

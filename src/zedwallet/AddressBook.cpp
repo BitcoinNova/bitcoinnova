@@ -1,5 +1,5 @@
-// Copyright (c) 2018, The Bitcoin Nova Developers
-//
+// Copyright (c) 2018, The TurtleCoin Developers
+// 
 // Please see the included LICENSE file for more information.
 
 //////////////////////////////////
@@ -14,10 +14,10 @@
 
 #include <Wallet/WalletUtils.h>
 
-#include <zedwallet/ColouredMsg.h>
+#include <Utilities/ColouredMsg.h>
 #include <zedwallet/Tools.h>
 #include <zedwallet/Transfer.h>
-#include <zedwallet/WalletConfig.h>
+#include <config/WalletConfig.h>
 
 const std::string getAddressBookName(AddressBook addressBook)
 {

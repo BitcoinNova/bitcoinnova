@@ -1,5 +1,5 @@
-// Copyright (c) 2018, The Bitcoin Nova Developers
-//
+// Copyright (c) 2018, The TurtleCoin Developers
+// 
 // Please see the included LICENSE file for more information.
 
 #pragma once
@@ -24,4 +24,4 @@ std::string getAction(Config &config);
 void mainLoop(std::shared_ptr<WalletInfo> walletInfo, CryptoNote::INode &node);
 
 template<typename T>
-void printCommands(const std::vector<T> &commands, int offset = 0);
+void printCommands(const std::vector<T> &commands, size_t offset = 0);

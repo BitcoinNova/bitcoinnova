@@ -1,5 +1,5 @@
-// Copyright (c) 2018, The Bitcoin Nova Developers
-//
+// Copyright (c) 2018, The TurtleCoin Developers
+// 
 // Please see the included LICENSE file for more information.
 
 ///////////////////////////
@@ -8,12 +8,12 @@
 
 #include <Common/StringTools.h>
 
-#include <zedwallet/ColouredMsg.h>
+#include <Utilities/ColouredMsg.h>
 #include <zedwallet/CommandImplementations.h>
 #include <zedwallet/GetInput.h>
 #include <zedwallet/Tools.h>
 #include <zedwallet/Types.h>
-#include <zedwallet/WalletConfig.h>
+#include <config/WalletConfig.h>
 
 void checkForNewTransactions(std::shared_ptr<WalletInfo> walletInfo)
 {
@@ -23,14 +23,14 @@ void checkForNewTransactions(std::shared_ptr<WalletInfo> walletInfo)
 
     if (newTransactionCount != walletInfo->knownTransactionCount)
     {
-        for (size_t i = walletInfo->knownTransactionCount;
+        for (size_t i = walletInfo->knownTransactionCount; 
                     i < newTransactionCount; i++)
         {
-            const CryptoNote::WalletTransaction t
+            const CryptoNote::WalletTransaction t 
                 = walletInfo->wallet.getTransaction(i);
 
             /* Don't print outgoing or fusion transfers */
-            if (t.totalAmount > 0)
+            if (t.totalAmount > 0 && t.fee != 0)
             {
                 std::cout << std::endl
                           << InformationMsg("New transaction found!")
@@ -106,10 +106,10 @@ void syncWallet(CryptoNote::INode &node,
                   << std::endl << std::endl;
     }
 
+    int counter = 1;
+
     while (walletHeight < localHeight)
     {
-        int counter = 1;
-
         /* This MUST be called on the main thread! */
         walletInfo->wallet.updateInternalCache();
 
@@ -128,6 +128,10 @@ void syncWallet(CryptoNote::INode &node,
            wallets so lets do it every 10 minutes */
         if (counter % 600 == 0)
         {
+            std::cout << std::endl
+                      << InformationMsg("Saving current progress...")
+                      << std::endl << std::endl;
+
             walletInfo->wallet.save();
         }
 
@@ -155,7 +159,6 @@ void syncWallet(CryptoNote::INode &node,
                    to sometimes force the sync to resume properly.
                    So we'll try this before warning the user.
                 */
-                std::cout << InformationMsg("Saving wallet.") << std::endl;
                 walletInfo->wallet.save();
                 waitSeconds = 5;
             }

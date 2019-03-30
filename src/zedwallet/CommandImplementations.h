@@ -1,5 +1,5 @@
-// Copyright (c) 2018, The Bitcoin Nova Developers
-//
+// Copyright (c) 2018, The TurtleCoin Developers
+// 
 // Please see the included LICENSE file for more information.
 
 #pragma once
@@ -12,7 +12,7 @@ bool handleCommand(const std::string command,
                    std::shared_ptr<WalletInfo> walletInfo,
                    CryptoNote::INode &node);
 
- void changePassword(std::shared_ptr<WalletInfo> walletInfo);
+void changePassword(std::shared_ptr<WalletInfo> walletInfo);
 
 void printPrivateKeys(CryptoNote::WalletGreen &wallet, bool viewWallet);
 
@@ -42,7 +42,7 @@ void saveCSV(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node);
 
 void save(CryptoNote::WalletGreen &wallet);
 
-void listTransfers(bool incoming, bool outgoing,
+void listTransfers(bool incoming, bool outgoing, 
                    CryptoNote::WalletGreen &wallet, CryptoNote::INode &node);
 
 void printOutgoingTransfer(CryptoNote::WalletTransaction t,

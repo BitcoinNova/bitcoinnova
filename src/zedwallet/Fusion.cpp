@@ -1,21 +1,21 @@
-// Copyright (c) 2018, The Bitcoin Nova Developers
-//
+// Copyright (c) 2018, The TurtleCoin Developers
+// 
 // Please see the included LICENSE file for more information.
 
 /////////////////////////////
 #include <zedwallet/Fusion.h>
 /////////////////////////////
 
-#include "CryptoNoteConfig.h"
+#include <config/CryptoNoteConfig.h>
 
 #include <Wallet/WalletGreen.h>
 #include <Wallet/WalletUtils.h>
 
-#include <zedwallet/ColouredMsg.h>
+#include <Utilities/ColouredMsg.h>
 #include <zedwallet/Tools.h>
-#include <zedwallet/WalletConfig.h>
+#include <config/WalletConfig.h>
 
-size_t makeFusionTransaction(CryptoNote::WalletGreen &wallet,
+size_t makeFusionTransaction(CryptoNote::WalletGreen &wallet, 
                              uint64_t threshold, uint64_t height)
 {
     uint64_t bestThreshold = threshold;
@@ -47,9 +47,9 @@ size_t makeFusionTransaction(CryptoNote::WalletGreen &wallet,
     try
     {
         return wallet.createFusionTransaction(
-                                              bestThreshold, CryptoNote::getDefaultMixinByHeight(height), {},
-                                              wallet.getAddress(0)
-                                              );
+            bestThreshold, CryptoNote::getDefaultMixinByHeight(height), {},
+            wallet.getAddress(0)
+        );
     }
     catch (const std::runtime_error &e)
     {
@@ -99,9 +99,9 @@ bool optimize(CryptoNote::WalletGreen &wallet, uint64_t threshold,
         /* Create as many fusion transactions until we can't send anymore,
            either because balance is locked too much or we can no longer
            optimize anymore transactions */
-           const size_t tmpFusionTxID = makeFusionTransaction(
-               wallet, threshold, height
-           );
+        const size_t tmpFusionTxID = makeFusionTransaction(
+            wallet, threshold, height
+        );
 
         if (tmpFusionTxID == CryptoNote::WALLET_INVALID_TRANSACTION_ID)
         {
@@ -121,7 +121,7 @@ bool optimize(CryptoNote::WalletGreen &wallet, uint64_t threshold,
             }
             else
             {
-                std::cout << SuccessMsg("Created "
+                std::cout << SuccessMsg("Created " 
                             + std::to_string(fusionTransactionHashes.size())
                                     + " fusion transactions!") << std::endl;
             }
@@ -155,7 +155,7 @@ bool optimize(CryptoNote::WalletGreen &wallet, uint64_t threshold,
 
     while (true)
     {
-        const std::vector<CryptoNote::WalletTransactionWithTransfers>
+        const std::vector<CryptoNote::WalletTransactionWithTransfers> 
             unconfirmedTransactions = wallet.getUnconfirmedTransactions();
 
         std::vector<Crypto::Hash> unconfirmedTxHashes;
@@ -175,10 +175,10 @@ bool optimize(CryptoNote::WalletGreen &wallet, uint64_t threshold,
             /* If the fusion transaction hash is present in the unconfirmed
                transactions pool, we need to wait for it to complete. */
             if (std::find(unconfirmedTxHashes.begin(),
-                          unconfirmedTxHashes.end(), tx)
+                          unconfirmedTxHashes.end(), tx) 
                        != unconfirmedTxHashes.end())
             {
-                fusionCompleted = false;
+                fusionCompleted = false; 
             }
             else
             {
@@ -189,7 +189,7 @@ bool optimize(CryptoNote::WalletGreen &wallet, uint64_t threshold,
                    output message */
                 fusionTransactionHashes.erase(std::remove
                     (fusionTransactionHashes.begin(),
-                     fusionTransactionHashes.end(), tx),
+                     fusionTransactionHashes.end(), tx), 
                      fusionTransactionHashes.end());
             }
         }
@@ -210,7 +210,7 @@ bool optimize(CryptoNote::WalletGreen &wallet, uint64_t threshold,
                 std::cout << WarningMsg(" fusion transactions still to be "
                                         "confirmed.");
             }
-
+            
             std::cout << std::endl
                       << SuccessMsg("Will try again in 15 seconds...")
                       << std::endl;
@@ -230,16 +230,16 @@ bool optimize(CryptoNote::WalletGreen &wallet, uint64_t threshold,
     return true;
 }
 
-bool fusionTX(CryptoNote::WalletGreen &wallet,
-  CryptoNote::TransactionParameters p,
-  uint64_t height)
+bool fusionTX(CryptoNote::WalletGreen &wallet, 
+              CryptoNote::TransactionParameters p,
+              uint64_t height)
 {
     std::cout << WarningMsg("Your transaction is too large to be accepted by "
                             "the network!")
               << std::endl << "We're attempting to optimize your "
               << "wallet, which hopefully will make the transaction small "
-              << "enough to fit in a block." << std::endl
-              << "Please wait, this will take some time..." << std::endl
+              << "enough to fit in a block." << std::endl 
+              << "Please wait, this will take some time..." << std::endl 
               << std::endl;
 
     /* We could check if optimization succeeded, but it's not really needed
@@ -252,7 +252,7 @@ bool fusionTX(CryptoNote::WalletGreen &wallet,
     while (wallet.getActualBalance() < p.destinations[0].amount + p.fee)
     {
         /* Break after a minute just in case something has gone wrong */
-        if ((std::chrono::system_clock::now() - startTime) >
+        if ((std::chrono::system_clock::now() - startTime) > 
              std::chrono::minutes(5))
         {
             std::cout << WarningMsg("Fusion transactions have "

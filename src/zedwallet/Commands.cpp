@@ -1,5 +1,5 @@
-// Copyright (c) 2018, The Bitcoin Nova Developers
-//
+// Copyright (c) 2018, The TurtleCoin Developers
+// 
 // Please see the included LICENSE file for more information.
 
 ////////////////////////////////
@@ -10,7 +10,7 @@
 
 std::vector<Command> startupCommands()
 {
-    return
+    return 
     {
         Command("open", "Open a wallet already on your system"),
         Command("create", "Create a new wallet"),
@@ -43,7 +43,7 @@ std::vector<AdvancedCommand> allCommands()
         AdvancedCommand("exit", "Exit and save your wallet", true, false),
         AdvancedCommand("help", "List this help message", true, false),
         AdvancedCommand("transfer", "Send " + WalletConfig::ticker + " to someone", false, false),
-
+        
         /* Advanced commands */
         AdvancedCommand("ab_add", "Add a person to your address book", true, true),
         AdvancedCommand("ab_delete", "Delete a person in your address book", true, true),

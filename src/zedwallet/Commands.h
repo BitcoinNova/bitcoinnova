@@ -1,12 +1,12 @@
-// Copyright (c) 2018, The Bitcoin Nova Developers
-//
+// Copyright (c) 2018, The TurtleCoin Developers
+// 
 // Please see the included LICENSE file for more information.
 
 #pragma once
 
 #include <string>
 #include <vector>
-#include <zedwallet/WalletConfig.h>
+#include <config/WalletConfig.h>
 
 class Command
 {

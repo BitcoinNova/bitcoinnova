@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Bitcoin nova Multi-installer
+# Turtlecoin Multi-installer
 # a one line clone-and-compile for bitcoinnova:
 #
 #     ` $ curl -sL "https://raw.githubusercontent.com/bitcoinnova/bitcoinnova/master/scripts/multi_installer.sh" | bash
@@ -54,7 +54,7 @@ _set_wd() {
             esac
         fi
         mkdir bitcoinnova
-        git clone -b master -q https://github.com/Bitcoin-N/Bitcoinnova Bitcoinnova   >>build.log 2>&1 || _fail "Unable to clone git repository. Please see build.log for more information"
+        git clone -b master -q https://github.com/BitcoinNova/bitcoinnova bitcoinnova   >>build.log 2>&1 || _fail "Unable to clone git repository. Please see build.log for more information"
         cd bitcoinnova
     fi
 }
@@ -109,7 +109,7 @@ _configure_linux() {
     elif [ "$(awk -F= '/^NAME/{print $2}' /etc/os-release)" = "\"Debian GNU/Linux\"" ]; then
         _configure_debian
     else
-        _fail "Your OS version isn't supported by this installer. Please consider adding support for your OS to the project ('https://github.com/bitcoinnova')"
+        _fail "Your OS version isn't supported by this installer. Please consider adding support for your OS to the project ('https://github.com/BitcoinNova')"
     fi
 }
 
@@ -144,8 +144,8 @@ _configure_os() {
     _note "Operating system configuration completed. You're halfway there!"
 }
 
-_note "Bitcoin nova Multi_Installer v1.0 (pepperoni)"
-_colorize green " _______         _   _       _____      _       \n|__   __|       | | | |     / ____|    (_)      \n   | |_   _ _ __| |_| | ___| |     ___  _ _ __  \n   | | | | | '__| __| |/ _ \ |    / _ \| | '_ \ \n   | | |_| | |  | |_| |  __/ |___| (_) | | | | |\n   |_|\__,_|_|   \__|_|\___|\_____\___/|_|_| |_|\n" && echo
+_note "Bitcoin Nova Multi_Installer v1.0 (pepperoni)"
+_colorize green ":::::::::  ::::::::::: :::::::::::  ::::::::   ::::::::  ::::::::::: ::::    :::       ::::    :::  ::::::::  :::     :::     :::\n:+:    :+:     :+:         :+:     :+:    :+: :+:    :+:     :+:     :+:+:   :+:       :+:+:   :+: :+:    :+: :+:     :+:   :+: :+:\n+:+    +:+     +:+         +:+     +:+        +:+    +:+     +:+     :+:+:+  +:+       :+:+:+  +:+ +:+    +:+ +:+     +:+  +:+   +:+\n+#++:++#+      +#+         +#+     +#+        +#+    +:+     +#+     +#+ +:+ +#+       +#+ +:+ +#+ +#+    +:+ +#+     +:+ +#++:++#++:\n+#+    +#+     +#+         +#+     +#+        +#+    +#+     +#+     +#+  +#+#+#       +#+  +#+#+# +#+    +#+  +#+   +#+  +#+     +#+\n#+#    #+#     #+#         #+#     #+#    #+# #+#    #+#     #+#     #+#   #+#+#       #+#   #+#+# #+#    #+#   #+#+#+#   #+#     #+#\n#########  ###########     ###      ########   ########  ########### ###    ####       ###    ####  ########      ###     ###     ###\n" && echo
 
 _configure_os
 
@@ -153,4 +153,4 @@ _set_wd
 _build_bitcoinnova
 
 _note "Installation complete!"
-_note "Look in 'bitcoinnova/build/src/' for the executible binaries. See 'https://github.com/bitcoinnova/bitcoinnova' for more project support. Cowabunga!"
+_note "Look in 'bitcoinnova/build/src/' for the executible binaries. See 'https://github.com/BitcoinNova/bitcoinnova' for more project support. Cowabunga!"

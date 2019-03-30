@@ -1,5 +1,5 @@
-// Copyright (c) 2018, The Bitcoin Nova Developers
-//
+// Copyright (c) 2018, The TurtleCoin Developers
+// 
 // Please see the included LICENSE file for more information.
 
 /////////////////////////////////////////////
@@ -8,8 +8,9 @@
 
 #include <atomic>
 
-#include <Common/FormatTools.h>
 #include <Common/StringTools.h>
+
+#include <config/WalletConfig.h>
 
 #include <CryptoNoteCore/Account.h>
 #include <CryptoNoteCore/TransactionExtra.h>
@@ -20,8 +21,10 @@
 
 #include <Mnemonics/Mnemonics.h>
 
+#include <Utilities/FormatTools.h>
+
 #include <zedwallet/AddressBook.h>
-#include <zedwallet/ColouredMsg.h>
+#include <Utilities/ColouredMsg.h>
 #include <zedwallet/Commands.h>
 #include <zedwallet/Fusion.h>
 #include <zedwallet/Menu.h>
@@ -30,7 +33,6 @@
 #include <zedwallet/Tools.h>
 #include <zedwallet/Transfer.h>
 #include <zedwallet/Types.h>
-#include <zedwallet/WalletConfig.h>
 
 void changePassword(std::shared_ptr<WalletInfo> walletInfo)
 {
@@ -106,12 +108,38 @@ void balance(CryptoNote::INode &node, CryptoNote::WalletGreen &wallet,
              bool viewWallet)
 {
     const uint64_t unconfirmedBalance = wallet.getPendingBalance();
-    const uint64_t confirmedBalance = wallet.getActualBalance();
-    const uint64_t totalBalance = unconfirmedBalance + confirmedBalance;
+    uint64_t confirmedBalance = wallet.getActualBalance();
 
     const uint32_t localHeight = node.getLastLocalBlockHeight();
     const uint32_t remoteHeight = node.getLastKnownBlockHeight();
     const uint32_t walletHeight = wallet.getBlockCount();
+
+    /* We can make a better approximation of the view wallet balance if we
+       ignore fusion transactions.
+       See https://github.com/turtlecoin/turtlecoin/issues/531 */
+    if (viewWallet)
+    {
+        /* Not sure how to verify if a transaction is unlocked or not via
+           the WalletTransaction type, so this is technically not correct,
+           we might be including locked balance. */
+        confirmedBalance = 0;
+
+        size_t numTransactions = wallet.getTransactionCount();
+        
+        for (size_t i = 0; i < numTransactions; i++)
+        {
+            const CryptoNote::WalletTransaction t = wallet.getTransaction(i);
+
+            /* Fusion transactions are zero fee, skip them. Coinbase
+               transactions are also zero fee, include them. */
+            if (t.fee != 0 || t.isBase)
+            {
+                confirmedBalance += t.totalAmount;
+            }
+        }
+    }
+
+    const uint64_t totalBalance = unconfirmedBalance + confirmedBalance;
 
     std::cout << "Available balance: "
               << SuccessMsg(formatAmount(confirmedBalance)) << std::endl
@@ -122,7 +150,7 @@ void balance(CryptoNote::INode &node, CryptoNote::WalletGreen &wallet,
 
     if (viewWallet)
     {
-        std::cout << std::endl
+        std::cout << std::endl 
                   << InformationMsg("Please note that view only wallets "
                                     "can only track incoming transactions,")
                   << std::endl
@@ -190,10 +218,10 @@ void printSyncStatus(uint32_t localHeight, uint32_t remoteHeight,
                      uint32_t walletHeight)
 {
     std::string networkSyncPercentage
-        = Common::get_sync_percentage(localHeight, remoteHeight) + "%";
+        = Utilities::get_sync_percentage(localHeight, remoteHeight) + "%";
 
     std::string walletSyncPercentage
-        = Common::get_sync_percentage(walletHeight, remoteHeight) + "%";
+        = Utilities::get_sync_percentage(walletHeight, remoteHeight) + "%";
 
     std::cout << "Network sync status: ";
 
@@ -207,7 +235,7 @@ void printSyncStatus(uint32_t localHeight, uint32_t remoteHeight,
     }
 
     std::cout << "Wallet sync status: ";
-
+    
     /* Small buffer because wallet height is not always completely accurate */
     if (walletHeight + 1000 > remoteHeight)
     {
@@ -269,7 +297,7 @@ void printHashrate(uint64_t difficulty)
     );
 
     std::cout << "Network hashrate: "
-              << SuccessMsg(Common::get_mining_speed(hashrate))
+              << SuccessMsg(Utilities::get_mining_speed(hashrate))
               << " (Based on the last local block)" << std::endl;
 }
 
@@ -314,12 +342,12 @@ void reset(CryptoNote::INode &node, std::shared_ptr<WalletInfo> walletInfo)
               << InformationMsg("You can't make any transactions during the ")
               << InformationMsg("process.")
               << std::endl << std::endl;
-
+    
     if (!confirm("Are you sure?"))
     {
         return;
     }
-
+    
     std::cout << InformationMsg("Resetting wallet...") << std::endl;
 
     walletInfo->wallet.reset(scanHeight);
@@ -449,7 +477,7 @@ void printIncomingTransfer(CryptoNote::WalletTransaction t,
     std::cout << std::endl;
 }
 
-void listTransfers(bool incoming, bool outgoing,
+void listTransfers(bool incoming, bool outgoing, 
                    CryptoNote::WalletGreen &wallet, CryptoNote::INode &node)
 {
     const size_t numTransactions = wallet.getTransactionCount();
@@ -460,6 +488,14 @@ void listTransfers(bool incoming, bool outgoing,
     for (size_t i = 0; i < numTransactions; i++)
     {
         const CryptoNote::WalletTransaction t = wallet.getTransaction(i);
+
+        /* Is a fusion transaction (on a view only wallet). It appears to have
+           an incoming amount, because we can't detract the outputs (can't
+           decrypt them) */
+        if (t.fee == 0 && !t.isBase)
+        {
+            continue;
+        }
 
         if (t.totalAmount < 0 && outgoing)
         {
@@ -475,7 +511,7 @@ void listTransfers(bool incoming, bool outgoing,
 
     if (incoming)
     {
-        std::cout << SuccessMsg("Total received: "
+        std::cout << SuccessMsg("Total received: " 
                               + formatAmount(totalReceived))
                   << std::endl;
     }
@@ -557,7 +593,7 @@ void help(std::shared_ptr<WalletInfo> wallet)
     }
 }
 
- void advanced(std::shared_ptr<WalletInfo> wallet)
+void advanced(std::shared_ptr<WalletInfo> wallet)
 {
     /* We pass the offset of the command to know what index to print for
        command numbers */

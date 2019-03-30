@@ -1,4 +1,4 @@
-// Copyright (c) 2018, The Bitcoin Nova Developers
+// Copyright (c) 2018, The TurtleCoin Developers
 // 
 // Please see the included LICENSE file for more information.
 
@@ -7,7 +7,7 @@
 #include <memory>
 
 #include <zedwallet/Types.h>
-#include <zedwallet/WalletConfig.h>
+#include <config/WalletConfig.h>
 
 enum AddressType {NotAnAddress, IntegratedAddress, StandardAddress};
 

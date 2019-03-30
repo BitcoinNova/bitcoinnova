@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2018, The Bitcoin Nova Developers
-//
+// Copyright (c) 2018, The TurtleCoin Developers
+// 
 // Please see the included LICENSE file for more information.
 
 #pragma once
@@ -21,7 +21,7 @@ class NodeServer;
 class DaemonCommandsHandler
 {
 public:
-  DaemonCommandsHandler(CryptoNote::Core& core, CryptoNote::NodeServer& srv, Logging::LoggerManager& log, CryptoNote::RpcServer* prpc_server);
+  DaemonCommandsHandler(CryptoNote::Core& core, CryptoNote::NodeServer& srv, std::shared_ptr<Logging::LoggerManager> log, CryptoNote::RpcServer* prpc_server);
 
   bool start_handling() {
     m_consoleHandler.start();
@@ -38,7 +38,7 @@ private:
   CryptoNote::Core& m_core;
   CryptoNote::NodeServer& m_srv;
   Logging::LoggerRef logger;
-  Logging::LoggerManager& m_logManager;
+  std::shared_ptr<Logging::LoggerManager> m_logManager;
   CryptoNote::RpcServer* m_prpc_server;
 
   std::string get_commands_str();
@@ -62,5 +62,4 @@ private:
   bool start_mining(const std::vector<std::string>& args);
   bool stop_mining(const std::vector<std::string>& args);
   bool status(const std::vector<std::string>& args);
-
 };

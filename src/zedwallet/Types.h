@@ -1,49 +1,24 @@
-// Copyright (c) 2018, The Bitcoin Nova Developers
-//
+// Copyright (c) 2018, The TurtleCoin Developers
+// 
 // Please see the included LICENSE file for more information.
 
 #pragma once
 
-#include "CryptoNoteConfig.h"
+#include <config/CryptoNoteConfig.h>
 
 #include <Serialization/ISerializer.h>
 
 #include <Wallet/WalletGreen.h>
 
-struct CLICommand
-{
-    CLICommand() {}
-
-    CLICommand(std::string name, std::string description,
-               std::string shortName, bool hasShortName, bool hasArgument) :
-               name(name), description(description), shortName(shortName),
-               hasShortName(hasShortName), hasArgument(hasArgument) {}
-
-    /* The command name */
-    std::string name;
-
-    /* The command description */
-    std::string description;
-
-    /* The command shortname, e.g. --help == -h */
-    std::string shortName;
-
-    /* Does the command have a shortname */
-    bool hasShortName;
-
-    /* Does the command take an argument, e.g. --wallet-file yourwalletname */
-    bool hasArgument;
-};
-
 struct WalletInfo
 {
-    WalletInfo(std::string walletFileName,
-               std::string walletPass,
+    WalletInfo(std::string walletFileName, 
+               std::string walletPass, 
                std::string walletAddress,
                bool viewWallet,
-               CryptoNote::WalletGreen &wallet) :
-               walletFileName(walletFileName),
-               walletPass(walletPass),
+               CryptoNote::WalletGreen &wallet) : 
+               walletFileName(walletFileName), 
+               walletPass(walletPass), 
                walletAddress(walletAddress),
                viewWallet(viewWallet),
                wallet(wallet) {}
@@ -69,9 +44,6 @@ struct WalletInfo
 
 struct Config
 {
-    /* Should we exit after parsing arguments */
-    bool exit = false;
-
     /* Was the wallet file specified on CLI */
     bool walletGiven = false;
 
@@ -83,7 +55,7 @@ struct Config
 
     /* The daemon host */
     std::string host = "127.0.0.1";
-
+    
     /* The daemon port */
     int port = CryptoNote::RPC_DEFAULT_PORT;
 
