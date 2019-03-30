@@ -198,7 +198,7 @@ The binaries will be in the `src` folder when you are complete.
 - `./Bitcoinnovad --version`
 
 #### Thanks
-Cryptonote Developers, Bytecoin Developers, Monero Developers, Forknote Project, Bitcoinnova Community
+Cryptonote Developers, Bytecoin Developers, Monero Developers, Forknote Project, Bitcoin Nova Developers
 
 ### Copypasta for license when editing files
 
