@@ -15,8 +15,6 @@ If you would like to compile yourself, read on.
 
 ##### Prerequisites
 
-You will need the following packages: boost, cmake (3.8 or higher), make, and git.
-
 You will also need either GCC/G++, or Clang.
 
 If you are using GCC, you will need GCC-7.0 or higher.
@@ -51,6 +49,7 @@ The binaries will be in the `src` folder when you are complete.
 
 You need to modify the below command for your version of ubuntu - see https://apt.llvm.org/
 
+
 * Ubuntu 14.04 (Trusty)
 - `sudo add-apt-repository "deb https://apt.llvm.org/trusty/ llvm-toolchain-trusty 6.0 main"`
 
@@ -66,6 +65,7 @@ You need to modify the below command for your version of ubuntu - see https://ap
 - `sudo pip install cmake`
 - `export CC=clang-6.0`
 - `export CXX=clang++-6.0`
+
 - `git clone -b master --single-branch https://github.com/BitcoinNova/bitcoinnova`
 - `cd bitcoinnova`
 - `mkdir build`
@@ -105,6 +105,7 @@ The binaries will be in the `src` folder when you are complete.
 
 ##### Building
 
+
 - `which brew || /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"`
 - `brew install --force cmake boost llvm gcc@8`
 - `export CC=gcc-8`
@@ -128,12 +129,12 @@ The binaries will be in the `src` folder when you are complete.
 - Install XCode and Developer Tools.
 
 ##### Building
-
 - `which brew || /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"`
 - `brew install --force cmake boost llvm`
 - `export CC=/usr/local/opt/llvm/bin/clang`
 - `export CXX=/usr/local/opt/llvm/bin/clang++`
 - `git clone -b master --single-branch https://github.com/BitcoinNova/bitcoinnova`
+- `git clone -b master https://github.com/BitcoinNova/bitcoinnova`
 - `cd bitcoinnova`
 - `mkdir build`
 - `cd build`
@@ -203,13 +204,13 @@ Cryptonote Developers, Bytecoin Developers, Monero Developers, Forknote Project,
 
 ### Copypasta for license when editing files
 
-Hi Bitcoinnova contributor, thanks for forking and sending back Pull Requests. Extensive docs about contributing are in the works or elsewhere. For now this is the bit we need to get into all the files we touch. Please add it to the top of the files, see [src/CryptoNoteConfig.h](https://github.com/bitcoinnova/bitcoinnova/commit/28cfef2575f2d767f6e512f2a4017adbf44e610e) for an example.
+Hi Bitcoinnova contributor, thanks for forking and sending back Pull Requests. Extensive docs about contributing are in the works or elsewhere. For now this is the bit we need to get into all the files we touch. Please add it to the top of the files, see [src/CryptoNoteConfig.h](https://github.com/BitcoinNova/bitcoinnova/commit/28cfef2575f2d767f6e512f2a4017adbf44e610e) for an example.
 
-```
+````
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2018, The Monero Project
 // Copyright (c) 2018, The TurtleCoin Developers
 // Copyright (c) 2018, The Bitcoin Nova Developers
 //
 // Please see the included LICENSE file for more information.
-```
+````
