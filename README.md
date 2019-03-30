@@ -1,7 +1,5 @@
 ![image](http://pool.bitcoinn.biz/bitcoin-nova.png)
 
-#### Master Build Status
-[![Build Status](https://travis-ci.org/BitcoinNova/Bitcoinnova_0.12.0.1280.svg?branch=master)](https://travis-ci.org/BitcoinNova/Bitcoinnova_0.12.0.1280) [![Build status](https://ci.appveyor.com/api/projects/status/e7g927s49qs9p5n2/branch/master?svg=true)](https://ci.appveyor.com/project/IB313184/bitcoinnova-0-12-0-1280-mvdmc/branch/master) [![Codefresh build status](https://g.codefresh.io/api/badges/pipeline/ib313184/BitcoinNova%2Fbitcoinnova_0.12.0.1280%2Fbitcoinnova_0.12.0.1280?branch=master&key=eyJhbGciOiJIUzI1NiJ9.NWM5OGFiZGMwNzJlMmFhYzcwYzNhNjdl.JIEMTZguPPxrD4RzmqYrFq_Kk5Eblvdr8eGgk_WpUXo&type=cf-1)](https://g.codefresh.io/pipelines/bitcoinnova_0.12.0.1280/builds?repoOwner=BitcoinNova&repoName=bitcoinnova_0.12.0.1280&serviceName=BitcoinNova%2Fbitcoinnova_0.12.0.1280&filter=trigger:build~Build;branch:master;pipeline:5c9f67120b7cccbb322afbb7~bitcoinnova_0.12.0.1280)
 
 ### Installing
 
