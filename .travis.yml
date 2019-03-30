@@ -11,7 +11,7 @@ matrix:
       apt:
         sources:
         - ubuntu-toolchain-r-test
-        packages: 
+        packages:
           - libboost1.55-all-dev
           - g++-8
           - gcc-8
@@ -28,7 +28,7 @@ matrix:
       apt:
         sources:
         - ubuntu-toolchain-r-test
-        packages: 
+        packages:
           - libboost1.55-all-dev
           - g++-7
           - gcc-7
@@ -45,7 +45,7 @@ matrix:
         sources:
         - ubuntu-toolchain-r-test
         - llvm-toolchain-trusty-6.0
-        packages: 
+        packages:
           - libboost1.55-all-dev
           - clang-6.0
           - libstdc++-7-dev
@@ -97,16 +97,16 @@ install:
 # Need to uninstall oclint to get newer gcc installed https://github.com/travis-ci/travis-ci/issues/8826
 - if [[ "${LABEL:0:3}" == "osx" ]]; then brew cask uninstall --force oclint || true ; fi
 
-# Need a newer version of llvm to link against to get std::filesystem / std::experimental::filesystem 
-- if [[ "${LABEL:0:3}" == "osx" ]]; then travis_retry brew install llvm || travis_retry brew upgrade llvm ; fi
+# Need a newer version of llvm to link against to get std::filesystem / std::experimental::filesystem
+- if [[ "${LABEL:0:3}" == "osx" ]]; then brew install llvm || brew upgrade llvm ; fi
 
 # Neeed to install ccache
-- if [[ "${LABEL:0:3}" == "osx" ]]; then travis_retry brew install ccache ; fi
+- if [[ "${LABEL:0:3}" == "osx" ]]; then brew install ccache ; fi
 - if [[ "${LABEL:0:3}" == "osx" ]]; then export PATH="/usr/local/opt/ccache/libexec:$PATH" ; fi
 
 # Install the correct gcc version
-- if [[ "$LABEL" == "osx-g++-8" ]]; then travis_retry brew install gcc@8 ; fi
-- if [[ "$LABEL" == "osx-g++-7" ]]; then travis_retry brew install gcc@7 ; fi
+- if [[ "$LABEL" == "osx-g++-8" ]]; then brew install gcc@8 ; fi
+- if [[ "$LABEL" == "osx-g++-7" ]]; then brew install gcc@7 ; fi
 
 - if [[ "$LABEL" == "aarch64" ]]; then export BASEDIR=`pwd` ; fi
 - if [[ "$LABEL" == "aarch64" ]]; then cd $HOME ; fi
@@ -128,16 +128,15 @@ install:
 script:
 - eval $MATRIX_EVAL
 - mkdir build && cd build
-- cmake -DCMAKE_BUILD_TYPE=Release -DSTATIC=true .. ${CUSTOM_TOOLCHAIN} ${CUSTOM_BOOST_ROOT} ${ADDITIONAL_CMAKE_ARGS}
+- cmake -DCMAKE_BUILD_TYPE=Release -DSTATIC=true .. ${CUSTOM_TOOLCHAIN} ${CUSTOM_BOOST_ROOT}
 - make -j2
-- if [[ "$LABEL" != "aarch64" ]]; then ./src/cryptotest ; fi
 
 before_deploy:
 - if [[ "${TRAVIS_TAG}" == "" ]]; then export TRAVIS_TAG=${TRAVIS_COMMIT} ; fi
 - cd src
 - TARGETS="Bitcoinnovad miner zedwallet Bitcoinnova-service zedwallet-beta cryptotest wallet-api"
 - ${STRIP} ${TARGETS}
-- rm -rf bitcoinnova-${TRAVIS_TAG} 
+- rm -rf bitcoinnova-${TRAVIS_TAG}
 - mkdir bitcoinnova-${TRAVIS_TAG}
 - cp ${TARGETS} bitcoinnova-${TRAVIS_TAG}/
 - cp ../../LICENSE bitcoinnova-${TRAVIS_TAG}/
