@@ -150,26 +150,12 @@ before_deploy:
 deploy:
   - provider: releases
     api_key:
-      secure: a5+tnRUED/xixCQmC3jKPJXh+eGTMqwhD3oViP35teQWorSyYD6ZRlR7j/Ms//Ob0j4IJOuc2WtkDaknJeCCmENnY9P4Zo2Q0uZIHwbmnjH/MLFyh09ssWQDRWmOWFDcxfRBm3/b+nZMkopnJfQyR7jEQ2eb8MxfkQg9OoIq/bckfW/fDjNCcTAhac6kTrBTut5X/MIJM5gi90X208Pc4X5SoeLQesWWLJNKVzrUkRYky9FEOjhSoDfu0VYWNpf041PvHqwmGjCaGZcEBUlF6fMPfXZz86fMU90CTzT6/tJNLpbTnM6G7IksiR9+5ixQgkFR5lQXF5KOk2N2R9GPAheX8VcBhqDTdsDv33bb8gpxqeJ1QBpdJm4e/KEUr2FRsbinIVxRKChXRxwuP67fkl6gBRGrGFBRyQL5XrQtyXnMIdpWPguq3DLOgA8enTfY/syUwr+Mb0J9DMbuVhzzfBS2xXNyeXv6mjvY0CtgN4IFsVkl45gjbE3Xc2fNedjPPTYDeMcPdaRqjBY+2Oo9i5AtIfR6v56h+xqMhAtW2wWMsTLJt+2XzfMDt1ODTfhCebEv8lkPy88MFy+PC7GAwJ5A5gPgMjwQz7UcwC8rFRxQRX1KpIqBMqNR8Z2rouJCYjyfku8yxgwkP0edCHQ554DvKjmjAMaMyeGHGN9hx+E=
+      secure: ZRUB4qkQqjRnhNR765liRRHjgKdaB9GALdtgfEiG/jaKx2KLALNeSa6RC+AUZ7oYLTNJ5Pu1wghFbm8RTXBV/k5+Ztkn6a2yQQd6QhaO9RHP3z+wiXqIkzrHfcEIuiMzXA3a57cYTQFhqBk4ZvVRQAtBUyCNhGZtPpFjQGNJ7NTuZwOJho/kx2Ab+4KG4ohIbznz3+WJ8qKtxYS+dVEGEMraLGytr0vdReL6aeS3EWoMSaRrTiViEzPABlSDPIu3XdU+ixjXhi1ocbiDnj/4TNok8UvQ032Co1C1XGpMYTps+b2ofhnRc9fvzgO/ucjeHFNJRABxKprWDgatp5rk+/Dvwsu4Mds3Mow49yFM2hUGqgyCNd8rIU01cxP8BRB5Xz7iPsl+qVTvECKOgEcYd1Ve5in2oEyZdg4WCB0MQNlfJRl/ee2uJA8s0PIHsudJ1IkqF7p39tsuGeXXUnRpkW+mOYcpl/1F6sz0ka2PP54EMnMuArG6OgjhjMHvIi76jythMzeB1vTgha9ttTWudJXMnABAh9GPZby6jvNYpuUrSbJsPpqOt9H7VoLGDD5YBIwliELOFLMcRr0j7erimzKKZZxMmqO8HNGgc3aLxxPmn+wc5ATdb81Hx40DV9wHJUWi0/29msGWQoGiTpCn78wezs3j/HBLKcKVBoWTLt4=
     file:
       - bitcoinnova-${TRAVIS_TAG}-${LABEL}.tar.gz
     skip_cleanup: true
     on:
-      repo: BitcoinNova/bitcoinnova_0.12.0.1280
+      repo: BitcoinNova/bitcoinnova
       tags: true
       condition: "$_DEPLOYABLE = true"
-
-  - provider: s3
-    access_key_id:
-      secure: DBwV4byu9+n8ZgIg/ncZBlAKAVrhYe4ozCgIk8oxd4ow4sxvyQ7bmUsRKmBwjmRskStu60xVl2OYHU5rK1fc07a8MC/68jhaa1H3qqwaoowFskDF5PW6LVQEu7VlHJqszI821I/m2vDQhXw87RDP6hIqlsXAth6SNUQvr2xGn3GYG8zgUOURVbjU7fbi2q1dvS2Q5Tx7qZ38q+DxV/5raoQRdccWhk0R7xvsTMC3LkeTc8XF7HrYw+n6/tF5fkx3Vnp3MJNZtqBvljNVxbFcHUHvuwKIhDZXpurUQwWarrxQ9YB2Wm+622EZq0UnJP+N56+qYP+A035MIDuTx7Lf6mkNR0I+cDaU0ywM5avm0oXvgfDVQwFTYCwhkMtmrHsISfkFjIZCp8ZAsGEm/rdwlwUP8Mk9kGAFMJuCfEOK5vAyMiKasXEEGFcYxvD92HQPMIjizGyYBdw0BwjgVut48dLFM3VlDlN8GvGoVXllsv0UfepW5JkJWT9XBuF2T+M74U0X/f+E+g6whLRVGZ0tjSzhga9wTKfP0QyWdxzu9U8kJDaYt9Gvca0Xt8VFCT8s9ij0XsNOtOYUo/DQmCn5/okGsVVXgT5KRUt462gJ7IZUX3Ti09KgdQsFfAu2BllaPLvqmu62FwhFdYmkfL9fWgzfE5F2A6HZbV2Di63dew4=
-    secret_access_key:
-      secure: cmy8eYUr8Hpii10a5fsTzhsBT5YNrQp5DCqaGCl6Ebd4T7t4+DpaHbERSUWjM6JCt9z1nmipT976ViJrnWUCBIxhxS/GAKbLPSSXxe6L7mA97ucwTLsICxZaWYjG/PkZl/7bIXH9GIslkxU/490ghciAk9AjNNjkX2jVt/62JOQiuzQomQvwg++3ececI3SfNKm+pNtL789no309PoEuyFewD0C/g15rsOvNoAZqNREcrSOPYJQXph4KWda/hBSWKIHU+kOKWUcdQQBKOchAoJQGJIFRwj4dDhuUwqb9Fz9DSdu6vyujNAOicUxKmrWV2KTNC2mGVK7Oa7dH2oDWV4WcBpI50bZDYghE4e4lz14mV3xkeuQaGGVF21d63jPxEzbXsLwObKtjx+dNqXpFWaVwyGflEkddvLIyqFd8CUtI45kTAHuoeQg0uRG/ols09AfW5iezHkOI50XxWZLZUwfrScTix0vSRwguHRCEnSolIylu36zMg8+azfmKY/aqLt1XidHGDtDjvNvoWZkKimlhC1thGXqzB+e86sTjs3ETdWuaiM/Pi6zJGcLVEnd7hxF98yxQVpJ4zJZzc5Lrc1yomRWkxgWpM+2dHfUomIYj+WSdsJw3YlNmDFL6Ymizw483FBUhStF0BCSSDafC1YatIx5XRUEoElzMz0zIczs=
-    bucket: bitcoinnova
-    skip_cleanup: true
-    acl: public_read
-    region: us-east-2
-    upload-dir: bitcoinnova
-    local-dir: src/builds
-    on:
-      repo: bitcoinNova/bitcoinnova_0.12.0.1280
       all_branches: true
