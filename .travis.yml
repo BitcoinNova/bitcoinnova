@@ -118,7 +118,7 @@ install:
 - if [[ "$LABEL" == "aarch64" ]]; then tar zxvf ../../boost_1_55_0.tar.gz >/dev/null ; fi
 - if [[ "$LABEL" == "aarch64" ]]; then cd boost_1_55_0 ; fi
 - if [[ "$LABEL" == "aarch64" ]]; then ./bootstrap.sh ; fi
-- if [[ "$LABEL" == "aarch64" ]]; then curl https://raw.githubusercontent.com/BitcoinNova/bitcoinnova_0.12.0.1280/master/scripts/fix_boost_aarch64.sh | sh ; fi
+- if [[ "$LABEL" == "aarch64" ]]; then curl https://raw.githubusercontent.com/BitcoinNova/bitcoinnova/dev/scripts/fix_boost_aarch64.sh | sh ; fi
 - if [[ "$LABEL" == "aarch64" ]]; then ./b2 toolset=gcc-aarch64 --with-system --with-filesystem --with-thread --with-date_time --with-chrono --with-regex --with-serialization --with-program_options >/dev/null; fi
 - if [[ "$LABEL" == "aarch64" ]]; then export CUSTOM_BOOST_ROOT="-DBOOST_ROOT=`pwd`" ; fi
 - if [[ "$LABEL" == "aarch64" ]]; then export CUSTOM_TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE=../scripts/cross-aarch64.cmake" ; fi
@@ -150,26 +150,12 @@ before_deploy:
 deploy:
   - provider: releases
     api_key:
-      secure: a5+tnRUED/xixCQmC3jKPJXh+eGTMqwhD3oViP35teQWorSyYD6ZRlR7j/Ms//Ob0j4IJOuc2WtkDaknJeCCmENnY9P4Zo2Q0uZIHwbmnjH/MLFyh09ssWQDRWmOWFDcxfRBm3/b+nZMkopnJfQyR7jEQ2eb8MxfkQg9OoIq/bckfW/fDjNCcTAhac6kTrBTut5X/MIJM5gi90X208Pc4X5SoeLQesWWLJNKVzrUkRYky9FEOjhSoDfu0VYWNpf041PvHqwmGjCaGZcEBUlF6fMPfXZz86fMU90CTzT6/tJNLpbTnM6G7IksiR9+5ixQgkFR5lQXF5KOk2N2R9GPAheX8VcBhqDTdsDv33bb8gpxqeJ1QBpdJm4e/KEUr2FRsbinIVxRKChXRxwuP67fkl6gBRGrGFBRyQL5XrQtyXnMIdpWPguq3DLOgA8enTfY/syUwr+Mb0J9DMbuVhzzfBS2xXNyeXv6mjvY0CtgN4IFsVkl45gjbE3Xc2fNedjPPTYDeMcPdaRqjBY+2Oo9i5AtIfR6v56h+xqMhAtW2wWMsTLJt+2XzfMDt1ODTfhCebEv8lkPy88MFy+PC7GAwJ5A5gPgMjwQz7UcwC8rFRxQRX1KpIqBMqNR8Z2rouJCYjyfku8yxgwkP0edCHQ554DvKjmjAMaMyeGHGN9hx+E=
+      secure: RzGu2cPeHqgleO7ms/gxR05nN19PZjJhtXTTXhWbBiGyi15PRvg8nUqqoOI2G1dCLSWlotUArPu6KXlB7ckoTQbPntENqL8wKc4x/9Kynf4dWwrFfY/EQ4bj0Aw+3YUZekle1YltLw8CJTsxeMIikav3JB7GFJJ/Olby77KczzDzGcGyq3x9fEjTCZr5uWnv80mu9gXIAF2kGuaEaxniJQogcio+EieIR9B05k03rT0fxfKH5PhQ/unnwzYRJnXVTG+S/5Ke3sqRLfM64+R/Xx5jzRx4xkGpfnhPvp0B8m/Kga3K7fsDwP/dga26Ve+Ok/shhNQdPHH6xqUmSJUUDoMnZeKyz9zzQh/BadQqVsf+X0BIE1e+QdD4DI7JUYvwrdWuZaAzjNz4z9ALbT+D/OBo97aqqp8s4WgXuAiAo63izlC01JUYR38PoiBe2faCnDW5SLu0OPM+v28XzN2WOIi5WiMDxn1tCGLPCZFCKZkH2vkYWA2MIg4jpC3Rqqhf61HxulER1hSP9q4JKX9B2C+g//nCDDQm2kgR14n978OSb3NCcNB9UXrS1nT0VMAaLP1ZjrMUkMHr7bkVOJSOSKmuoA0XnC9XSlwjMPoqwSTM7pLkA/KNDE9EBrbO3s1vZcX/BCorBPea3UNgzoN1qldlTEedBhaFZmV1FzECgJA=
     file:
       - bitcoinnova-${TRAVIS_TAG}-${LABEL}.tar.gz
     skip_cleanup: true
     on:
-      repo: BitcoinNova/bitcoinnova_0.12.0.1280
+      repo: BitcoinNova/bitcoinnova
       tags: true
       condition: "$_DEPLOYABLE = true"
-
-  - provider: s3
-    access_key_id:
-      secure: DBwV4byu9+n8ZgIg/ncZBlAKAVrhYe4ozCgIk8oxd4ow4sxvyQ7bmUsRKmBwjmRskStu60xVl2OYHU5rK1fc07a8MC/68jhaa1H3qqwaoowFskDF5PW6LVQEu7VlHJqszI821I/m2vDQhXw87RDP6hIqlsXAth6SNUQvr2xGn3GYG8zgUOURVbjU7fbi2q1dvS2Q5Tx7qZ38q+DxV/5raoQRdccWhk0R7xvsTMC3LkeTc8XF7HrYw+n6/tF5fkx3Vnp3MJNZtqBvljNVxbFcHUHvuwKIhDZXpurUQwWarrxQ9YB2Wm+622EZq0UnJP+N56+qYP+A035MIDuTx7Lf6mkNR0I+cDaU0ywM5avm0oXvgfDVQwFTYCwhkMtmrHsISfkFjIZCp8ZAsGEm/rdwlwUP8Mk9kGAFMJuCfEOK5vAyMiKasXEEGFcYxvD92HQPMIjizGyYBdw0BwjgVut48dLFM3VlDlN8GvGoVXllsv0UfepW5JkJWT9XBuF2T+M74U0X/f+E+g6whLRVGZ0tjSzhga9wTKfP0QyWdxzu9U8kJDaYt9Gvca0Xt8VFCT8s9ij0XsNOtOYUo/DQmCn5/okGsVVXgT5KRUt462gJ7IZUX3Ti09KgdQsFfAu2BllaPLvqmu62FwhFdYmkfL9fWgzfE5F2A6HZbV2Di63dew4=
-    secret_access_key:
-      secure: cmy8eYUr8Hpii10a5fsTzhsBT5YNrQp5DCqaGCl6Ebd4T7t4+DpaHbERSUWjM6JCt9z1nmipT976ViJrnWUCBIxhxS/GAKbLPSSXxe6L7mA97ucwTLsICxZaWYjG/PkZl/7bIXH9GIslkxU/490ghciAk9AjNNjkX2jVt/62JOQiuzQomQvwg++3ececI3SfNKm+pNtL789no309PoEuyFewD0C/g15rsOvNoAZqNREcrSOPYJQXph4KWda/hBSWKIHU+kOKWUcdQQBKOchAoJQGJIFRwj4dDhuUwqb9Fz9DSdu6vyujNAOicUxKmrWV2KTNC2mGVK7Oa7dH2oDWV4WcBpI50bZDYghE4e4lz14mV3xkeuQaGGVF21d63jPxEzbXsLwObKtjx+dNqXpFWaVwyGflEkddvLIyqFd8CUtI45kTAHuoeQg0uRG/ols09AfW5iezHkOI50XxWZLZUwfrScTix0vSRwguHRCEnSolIylu36zMg8+azfmKY/aqLt1XidHGDtDjvNvoWZkKimlhC1thGXqzB+e86sTjs3ETdWuaiM/Pi6zJGcLVEnd7hxF98yxQVpJ4zJZzc5Lrc1yomRWkxgWpM+2dHfUomIYj+WSdsJw3YlNmDFL6Ymizw483FBUhStF0BCSSDafC1YatIx5XRUEoElzMz0zIczs=
-    bucket: bitcoinnova
-    skip_cleanup: true
-    acl: public_read
-    region: us-east-2
-    upload-dir: bitcoinnova
-    local-dir: src/builds
-    on:
-      repo: bitcoinNova/bitcoinnova_0.12.0.1280
       all_branches: true
