@@ -12,14 +12,15 @@
 #include <Common/StringTools.h>
 
 #include <CryptoNoteCore/CryptoNoteBasicImpl.h>
-#include <CryptoNoteCore/CryptoNoteTools.h>
-#include <CryptoNoteCore/TransactionExtra.h>
+#include <Common/CryptoNoteTools.h>
+#include <Common/TransactionExtra.h>
 
 #include <fstream>
 
 #include <iostream>
 
 #include <Utilities/ColouredMsg.h>
+#include <Utilities/Addresses.h>
 #include <zedwallet/PasswordContainer.h>
 #include <config/WalletConfig.h>
 
@@ -67,7 +68,7 @@ std::string formatDollars(const uint64_t amount)
     /* We want to format our number with comma separators so it's easier to
        use. Now, we could use the nice print_money() function to do this.
        However, whilst this initially looks pretty handy, if we have a locale
-       such as ja_JP.utf8, 1 TRTL will actually be formatted as 100 TRTL, which
+       such as ja_JP.utf8, 1 BTN will actually be formatted as 100 BTN, which
        is terrible, and could really screw over users.
 
        So, easy solution right? Just use en_US.utf8! Sure, it's not very
@@ -207,7 +208,7 @@ std::string createIntegratedAddress(const std::string &address,
     CryptoNote::AccountPublicAddress addr;
 
     /* Get the private + public key from the address */
-    CryptoNote::parseAccountAddressString(prefix, addr, address);
+    Utilities::parseAccountAddressString(prefix, addr, address);
 
     /* Pack as a binary array */
     CryptoNote::BinaryArray ba;
@@ -256,7 +257,11 @@ uint64_t getScanHeight()
 
         try
         {
-            return std::stoi(stringHeight);
+            return std::stoull(stringHeight);
+        }
+        catch (const std::out_of_range &)
+        {
+            std::cout << WarningMsg("Input is too large or too small!");
         }
         catch (const std::invalid_argument &)
         {
@@ -399,9 +404,13 @@ bool parseDaemonAddressFromString(std::string& host, int& port, const std::strin
             port = std::stoi(parts.at(1));
             return true;
         }
-        catch (const std::invalid_argument&)
+        catch (const std::out_of_range &)
         {
-          return false;
+            return false;
+        }
+        catch (const std::invalid_argument &)
+        {
+            return false;
         }
     }
 

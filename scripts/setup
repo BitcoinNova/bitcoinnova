@@ -1,4 +1,4 @@
-# setup - pull a copy of Bitcoinnovacoin-development 
+# setup - pull a copy of turtlecoin-development 
 # and put it inside a timestamped folder.
 # rock made this
 #!/usr/bin/env bash
@@ -10,7 +10,7 @@ sudo apt-get install -y build-essential python-dev gcc g++ git cmake libboost-al
 
 # This is the folder where your source code snapshots will go
 # when you are done building.
-sourcefolder=~/Source/Bitcoinnova-dev-build-$(date '+%Y-%m-%d-%H-%M')
+sourcefolder=~/Source/turtle-dev-build-$(date '+%Y-%m-%d-%H-%M')
 
 # Clear the workspace
 clear
@@ -32,7 +32,7 @@ echo -e "\n\n\n== CLONING Bitcoinnova in $sourcefolder"
 # master branch instead, and it will get the source from the last
 # time that we merged development to master, which normally only
 # happens when we create a version release.
-git clone -b development https://github.com/BitcoinNova/Bitcoinnova $sourcefolder
+git clone -b development https://github.com/turtlecoin/turtlecoin $sourcefolder
 cd $sourcefolder
 ls -al
 
@@ -56,11 +56,11 @@ ls -al
 # distribution. We should also include the LICENSE file in this 
 # zip file just in case.
 echo -e "\n\n\n== COMPRESSING BINARIES"
-wget https://raw.githubusercontent.com/BitcoinNova/Bitcoinnova/development/LICENSE
-zip Bitcoinnovacoin-dev-bin-$(date +%F)-linux.zip miner LICENSE zedwallet Bitcoinnovad Bitcoinnova-service
+wget https://raw.githubusercontent.com/turtlecoin/turtlecoin/development/LICENSE
+zip turtlecoin-dev-bin-$(date +%F)-linux.zip miner LICENSE zedwallet Bitcoinnovad Bitcoinnova-service
 
 # Create directories to keep always-up-to-date binaries for 
-# TRTL Network files. Ideally, your bashrc has aliases to run
+# BTN Network files. Ideally, your bashrc has aliases to run
 # from this folder, or you can add it to your $PATH.
 mkdir -p ~/.Crypto/{Athena,Bitcoinnova,Karai}
 mkdir ~/Binaries
@@ -78,7 +78,7 @@ rm ~/.Crypto/Bitcoinnova/Bitcoinnova-service
 cp miner ~/.Crypto/Bitcoinnova/miner
 cp zedwallet ~/.Crypto/Bitcoinnova/zedwallet
 cp Bitcoinnovad ~/.Crypto/Bitcoinnova/Bitcoinnovad
-cp turtle-service ~/.Crypto/Bitcoinnova/Bitcoinnova-service
+cp Bitcoinnova-service ~/.Crypto/Bitcoinnova/Bitcoinnova-service
 
 
 

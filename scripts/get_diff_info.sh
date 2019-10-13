@@ -4,7 +4,7 @@
 host=127.0.0.1
  
 # The port your rpc is running on
-port=45223
+port=31898
  
 # If you only triggered the diff algo at a certain point
 startHeight=1

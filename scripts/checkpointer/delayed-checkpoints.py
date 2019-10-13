@@ -22,7 +22,7 @@ def height():
     base_url = 'http://localhost:11898/getheight'
     resp = requests.get(base_url).json()
     if 'height' not in resp:
-        print ('Unexpected response, make sure TurtleCoind is running',
+        print ('Unexpected response, make sure Bitcoinnovad is running',
                resp)
         sys.exit(-1)
     else:

@@ -3,10 +3,8 @@ import ujson as json
 import sys
 import binascii
 
-to_address = "EAsX15ieXY1NAk9Yu3NoVBfBqUgsFPsv47Ff4W1t491vHiD8fyGHD7nR7gVk1FrcbP2d2mJfBt3M45NgbV6ZRcSdHixcSPH"
+to_address = "ELv3xYqUdAy4K8viYjNnMj21NLohHbf9ut2Cczxyh96d74TzxNgdB3aZbb9U2ZJ1DVmVpbDwzH77821o9ciNYQVaSt3V6bu7R"
 content = """
-Bitcoin Nova -->
-"""
 
 def rpc(method, params={}):
     base_url = "http://localhost:8070/json_rpc"

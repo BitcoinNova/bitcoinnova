@@ -1,5 +1,5 @@
-// Copyright (c) 2018, The TurtleCoin Developers
-// 
+// Copyright (c) 2018-2019, The TurtleCoin Developers
+//
 // Please see the included LICENSE file for more information.
 
 #pragma once
@@ -8,7 +8,7 @@
 
 #include <Errors/Errors.h>
 
-#include "json.hpp"
+#include "rapidjson/document.h"
 
 #include <string>
 
@@ -21,8 +21,7 @@
 #include <SubWallets/SubWallets.h>
 
 #include <WalletBackend/WalletSynchronizer.h>
-
-using nlohmann::json;
+#include <WalletBackend/WalletSynchronizerRAIIWrapper.h>
 
 class WalletBackend
 {
@@ -64,7 +63,8 @@ class WalletBackend
             const std::string password,
             const uint64_t scanHeight,
             const std::string daemonHost,
-            const uint16_t daemonPort);
+            const uint16_t daemonPort,
+            const bool daemonSSL);
 
         /* Imports a wallet from a private spend key and a view key. Returns
            the wallet class, or an error. */
@@ -75,7 +75,8 @@ class WalletBackend
             const std::string password,
             const uint64_t scanHeight,
             const std::string daemonHost,
-            const uint16_t daemonPort);
+            const uint16_t daemonPort,
+            const bool daemonSSL);
 
         /* Imports a view wallet from a private view key and an address.
            Returns the wallet class, or an error. */
@@ -86,26 +87,24 @@ class WalletBackend
             const std::string password,
             const uint64_t scanHeight,
             const std::string daemonHost,
-            const uint16_t daemonPort);
+            const uint16_t daemonPort,
+            const bool daemonSSL);
 
         /* Creates a new wallet with the given filename and password */
         static std::tuple<Error, std::shared_ptr<WalletBackend>> createWallet(
             const std::string filename,
             const std::string password,
             const std::string daemonHost,
-            const uint16_t daemonPort);
+            const uint16_t daemonPort,
+            const bool daemonSSL);
 
         /* Opens a wallet already on disk with the given filename + password */
         static std::tuple<Error, std::shared_ptr<WalletBackend>> openWallet(
             const std::string filename,
             const std::string password,
             const std::string daemonHost,
-            const uint16_t daemonPort);
-
-        /* Create an integrated address from an address + paymentID */
-        static std::tuple<Error, std::string> createIntegratedAddress(
-            const std::string address,
-            const std::string paymentID);
+            const uint16_t daemonPort,
+            const bool daemonSSL);
 
         /////////////////////////////
         /* Public member functions */
@@ -114,21 +113,22 @@ class WalletBackend
         /* Save the wallet to disk */
         Error save() const;
 
-        /* Converts the class to a json object */
-        json toJson() const;
+        /* Converts the class to a json string */
+        std::string toJSON() const;
 
         /* Initializes the class from a json string */
-        Error fromJson(const json &j);
+        Error fromJSON(const rapidjson::Document &j);
 
         /* Initializes the class from a json string, and inits the stuff we
            can't init from the json */
-        Error fromJson(
-            const json &j,
+        Error fromJSON(
+            const rapidjson::Document &j,
             const std::string filename,
             const std::string password,
             const std::string daemonHost,
-            const uint16_t daemonPort);
-        
+            const uint16_t daemonPort,
+            const bool daemonSSL);
+
         /* Send a transaction of amount to destination with paymentID */
         std::tuple<Error, Crypto::Hash> sendTransactionBasic(
             const std::string destination,
@@ -142,7 +142,8 @@ class WalletBackend
             const uint64_t fee,
             const std::string paymentID,
             const std::vector<std::string> subWalletsToTakeFrom,
-            const std::string changeAddress);
+            const std::string changeAddress,
+            const uint64_t unlockTime);
 
         /* Send a fusion using default mixin, default destination, and
            taking from all subwallets */
@@ -164,7 +165,7 @@ class WalletBackend
         uint64_t getTotalUnlockedBalance() const;
 
         /* Make a new sub wallet (gens a privateSpendKey) */
-        std::tuple<Error, std::string> addSubWallet();
+        std::tuple<Error, std::string, Crypto::SecretKey> addSubWallet();
 
         /* Import a sub wallet with the given privateSpendKey */
         std::tuple<Error, std::string> importSubWallet(
@@ -192,6 +193,8 @@ class WalletBackend
 
         /* Get a list of all addresses in the wallet */
         std::vector<std::string> getAddresses() const;
+
+        uint64_t getWalletCount() const;
 
         /* wallet sync height, local blockchain sync height,
            remote blockchain sync height */
@@ -238,10 +241,10 @@ class WalletBackend
         std::tuple<uint64_t, std::string> getNodeFee() const;
 
         /* Returns the node host and port */
-        std::tuple<std::string, uint16_t> getNodeAddress() const;
+        std::tuple<std::string, uint16_t, bool> getNodeAddress() const;
 
         /* Swap to a different daemon node */
-        void swapNode(std::string daemonHost, uint16_t daemonPort);
+        void swapNode(std::string daemonHost, uint16_t daemonPort, bool daemonSSL);
 
         /* Whether we have recieved info from the daemon at some point */
         bool daemonOnline() const;
@@ -251,7 +254,9 @@ class WalletBackend
 
         std::tuple<Error, Crypto::SecretKey> getTxPrivateKey(
             const Crypto::Hash txHash) const;
-        
+
+        std::vector<std::tuple<std::string, uint64_t, uint64_t>> getBalances() const;
+
         /////////////////////////////
         /* Public member variables */
         /////////////////////////////
@@ -273,7 +278,8 @@ class WalletBackend
             const uint64_t scanHeight,
             const bool newWallet,
             const std::string daemonHost,
-            const uint16_t daemonPort);
+            const uint16_t daemonPort,
+            const bool daemonSSL);
 
         /* View wallet constructor */
         WalletBackend(
@@ -283,7 +289,8 @@ class WalletBackend
             const std::string address,
             const uint64_t scanHeight,
             const std::string daemonHost,
-            const uint16_t daemonPort);
+            const uint16_t daemonPort,
+            const bool daemonSSL);
 
         //////////////////////////////
         /* Private member functions */
@@ -324,7 +331,9 @@ class WalletBackend
            rather than having to throw() or check isInitialized() everywhere.
 
            More info here: https://stackoverflow.com/q/43203869/8737306
-           
+
            PS: I want to die */
         std::shared_ptr<WalletSynchronizer> m_walletSynchronizer;
+
+        std::shared_ptr<WalletSynchronizerRAIIWrapper> m_syncRAIIWrapper;
 };
