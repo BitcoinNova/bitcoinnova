@@ -14,12 +14,11 @@
 #include <ctime>
 
 #include <config/CryptoNoteConfig.h>
+#include <config/WalletConfig.h>
 
-#include <CryptoNoteCore/Core.h>
+#include <iomanip>
 
 #include <Rpc/CoreRpcServerCommandsDefinitions.h>
-
-#include <config/WalletConfig.h>
 
 namespace Utilities
 {
@@ -151,7 +150,7 @@ std::string get_fork_time(
         }
     }
 
-    const float days = (next_fork - height) / CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;
+    const float days = (static_cast<float>(next_fork - height) / CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY);
 
     std::stringstream stream;
 
@@ -258,7 +257,7 @@ std::string formatDollars(const uint64_t amount)
     /* We want to format our number with comma separators so it's easier to
        use. Now, we could use the nice print_money() function to do this.
        However, whilst this initially looks pretty handy, if we have a locale
-       such as ja_JP.utf8, 1 TRTL will actually be formatted as 100 TRTL, which
+       such as ja_JP.utf8, 1 BTN will actually be formatted as 100 BTN, which
        is terrible, and could really screw over users.
 
        So, easy solution right? Just use en_US.utf8! Sure, it's not very
@@ -352,6 +351,14 @@ std::string prettyPrintBytes(uint64_t input)
         << suffixes[selectedSuffix];
 
     return msg.str();
+}
+
+std::string unixTimeToDate(const uint64_t timestamp)
+{
+    const std::time_t time = timestamp;
+    char buffer[100];
+    std::strftime(buffer, sizeof(buffer), "%F %R", std::localtime(&time));
+    return std::string(buffer);
 }
 
 } // namespace Utilities

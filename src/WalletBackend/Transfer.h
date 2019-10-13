@@ -4,11 +4,11 @@
 
 #include <CryptoNote.h>
 
-#include <CryptoNoteCore/CryptoNoteFormatUtils.h>
-
 #include <Errors/Errors.h>
 
 #include <Nigel/Nigel.h>
+
+#include <Serialization/SerializationTools.h>
 
 #include <SubWallets/SubWallets.h>
 
@@ -44,7 +44,8 @@ namespace SendTransaction
         const std::vector<std::string> addressesToTakeFrom,
         std::string changeAddress,
         const std::shared_ptr<Nigel> daemon,
-        const std::shared_ptr<SubWallets> subWallets);
+        const std::shared_ptr<SubWallets> subWallets,
+        const uint64_t unlockTime);
 
     std::vector<WalletTypes::TransactionDestination> setupDestinations(
         std::vector<std::pair<std::string, uint64_t>> addressesAndAmounts,
@@ -76,8 +77,6 @@ namespace SendTransaction
     std::vector<CryptoNote::TransactionOutput> keyOutputToTransactionOutput(
         const std::vector<WalletTypes::KeyOutput> keyOutputs);
 
-    Crypto::Hash getTransactionHash(CryptoNote::Transaction tx);
-
     std::tuple<Error, std::vector<CryptoNote::RandomOuts>> getRingParticipants(
         const uint64_t mixin,
         const std::shared_ptr<Nigel> daemon,
@@ -105,7 +104,8 @@ namespace SendTransaction
         const std::vector<WalletTypes::TxInputAndOwner> ourInputs,
         const std::string paymentID,
         const std::vector<WalletTypes::TransactionDestination> destinations,
-        const std::shared_ptr<SubWallets> subWallets);
+        const std::shared_ptr<SubWallets> subWallets,
+        const uint64_t unlockTime);
 
     std::tuple<Error, Crypto::Hash> relayTransaction(
         const CryptoNote::Transaction tx,
@@ -142,4 +142,12 @@ namespace SendTransaction
 
     /* Verify fee is as expected */
     bool verifyTransactionFee(const uint64_t expectedFee, CryptoNote::Transaction tx);
+
+    /* Template so we can do transaction, and transactionprefix */
+    template<typename T>
+    Crypto::Hash getTransactionHash(T tx)
+    {
+        std::vector<uint8_t> data = toBinaryArray(tx);
+        return Crypto::cn_fast_hash(data.data(), data.size());
+    }
 }

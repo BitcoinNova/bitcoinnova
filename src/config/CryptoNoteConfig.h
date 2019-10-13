@@ -1,7 +1,6 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2018, The Monero Project
-// Copyright (c) 2018, The TurtleCoin Developers
-// Copyright (c) 2019, The Bitcoin Nova Developers
+// Copyright (c) 2018-2019, The TurtleCoin Developers
 //
 // Please see the included LICENSE file for more information.
 
@@ -41,8 +40,6 @@ const uint64_t LWMA_2_DIFFICULTY_BLOCK_INDEX                 = 620000;
 const uint64_t LWMA_2_DIFFICULTY_BLOCK_INDEX_V2              = 700000;
 const uint64_t LWMA_2_DIFFICULTY_BLOCK_INDEX_V3              = 800000;
 
-const uint64_t LWMA_3_DIFFICULTY_BLOCK_INDEX                 = 2000000;
-
 const unsigned EMISSION_SPEED_FACTOR                         = 18;
 static_assert(EMISSION_SPEED_FACTOR <= 8 * sizeof(uint64_t), "Bad EMISSION_SPEED_FACTOR");
 
@@ -53,7 +50,7 @@ const char     GENESIS_COINBASE_TX_HEX[]                     = "010a01ff0001e2ae
 static_assert(sizeof(GENESIS_COINBASE_TX_HEX)/sizeof(*GENESIS_COINBASE_TX_HEX) != 1, "GENESIS_COINBASE_TX_HEX must not be empty.");
 
 /* This is the unix timestamp of the first "mined" block (technically block 2, not the genesis block)
-   You can get this value by doing "print_block 2" in TurtleCoind. It is used to know what timestamp
+   You can get this value by doing "print_block 2" in Bitcoinnovad. It is used to know what timestamp
    to import from when the block height cannot be found in the node or the node is offline. */
 const uint64_t GENESIS_BLOCK_TIMESTAMP                       = 1512800692;
 
@@ -72,7 +69,7 @@ const uint64_t MINIMUM_FEE                                   = UINT64_C(10000);
 const uint64_t MINIMUM_MIXIN_V1                              = 0;
 const uint64_t MAXIMUM_MIXIN_V1                              = 100;
 
-const uint64_t MINIMUM_MIXIN_V2                              = 7;
+const uint64_t MINIMUM_MIXIN_V2                              = 2;
 const uint64_t MAXIMUM_MIXIN_V2                              = 7;
 
 const uint64_t MINIMUM_MIXIN_V3                              = 3;
@@ -83,7 +80,7 @@ const uint32_t MIXIN_LIMITS_V1_HEIGHT                        = 440000;
 const uint32_t MIXIN_LIMITS_V2_HEIGHT                        = 620000;
 const uint32_t MIXIN_LIMITS_V3_HEIGHT                        = 800000;
 
-/* The mixin to use by default with zedwallet and turtle-service */
+/* The mixin to use by default with zedwallet and Bitcoinnova-service */
 /* DEFAULT_MIXIN_V0 is the mixin used before MIXIN_LIMITS_V1_HEIGHT is started */
 const uint64_t DEFAULT_MIXIN_V0                              = 3;
 const uint64_t DEFAULT_MIXIN_V1                              = MAXIMUM_MIXIN_V1;
@@ -115,7 +112,19 @@ const size_t   MAX_BLOCK_SIZE_INITIAL                        = 100000;
 const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR         = 100 * 1024;
 const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_DENOMINATOR       = 365 * 24 * 60 * 60 / DIFFICULTY_TARGET;
 const uint64_t MAX_EXTRA_SIZE                                = 140000;
+const uint64_t MAX_EXTRA_SIZE_V2                             = 1024;
+const uint64_t MAX_EXTRA_SIZE_V2_HEIGHT                      = 1300000;
 
+/* For new projects forked from this code base, the values immediately below
+   should be changed to 0 to prevent issues with transaction processing 
+   and other possible unexpected behavior */
+const uint64_t TRANSACTION_SIGNATURE_COUNT_VALIDATION_HEIGHT = 1400000;
+const uint64_t BLOCK_BLOB_SHUFFLE_CHECK_HEIGHT               = 1600000;
+const uint64_t TRANSACTION_INPUT_BLOCKTIME_VALIDATION_HEIGHT = 1600000;
+
+/* This describes how many blocks of "wiggle" room transactions have regarding
+   when the outputs can be spent based on a reasonable belief that the outputs
+   would unlock in the current block period */
 const uint64_t CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS     = 1;
 const uint64_t CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_SECONDS    = DIFFICULTY_TARGET * CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS;
 
@@ -126,8 +135,6 @@ const uint64_t CRYPTONOTE_NUMBER_OF_PERIODS_TO_FORGET_TX_DELETED_FROM_POOL = 7; 
 const size_t   FUSION_TX_MAX_SIZE                            = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT * 30 / 100;
 const size_t   FUSION_TX_MIN_INPUT_COUNT                     = 12;
 const size_t   FUSION_TX_MIN_IN_OUT_COUNT_RATIO              = 4;
-
-const uint32_t KEY_IMAGE_CHECKING_BLOCK_INDEX                = 0;
 
 const uint32_t UPGRADE_HEIGHT_V2                             = 1;
 const uint32_t UPGRADE_HEIGHT_V3                             = 30;
@@ -152,17 +159,24 @@ const uint64_t FORK_HEIGHTS[] =
     800000,  // 5
     1000000, // 6
     1200000, // 7
-    1400000, // 8
-    1600000, // 9
-    1800000, // 10
-    2000000, // 11
+    1300000, // 8
+    1400000, // 9
+    1600000, // 10
+    1800000, // 11
+    2000000, // 12
 };
 
 /* MAKE SURE TO UPDATE THIS VALUE WITH EVERY MAJOR RELEASE BEFORE A FORK */
-const uint64_t SOFTWARE_SUPPORTED_FORK_INDEX                 = 2;
+const uint64_t SOFTWARE_SUPPORTED_FORK_INDEX                 = 3;
 
 const uint64_t FORK_HEIGHTS_SIZE = sizeof(FORK_HEIGHTS) / sizeof(*FORK_HEIGHTS);
 
+/* The index in the FORK_HEIGHTS array that this version of the software will
+   support. For example, if CURRENT_FORK_INDEX is 3, this version of the
+   software will support the fork at 600,000 blocks.
+
+   This will default to zero if the FORK_HEIGHTS array is empty, so you don't
+   need to change it manually. */
 const uint8_t CURRENT_FORK_INDEX = FORK_HEIGHTS_SIZE == 0 ? 0 : SOFTWARE_SUPPORTED_FORK_INDEX;
 
 static_assert(CURRENT_FORK_INDEX >= 0, "CURRENT FORK INDEX must be >= 0");
@@ -177,7 +191,6 @@ const char     MINER_CONFIG_FILE_NAME[]                      = "miner_conf.json"
 } // parameters
 
 const char     CRYPTONOTE_NAME[]                             = "bitcoinnova";
-const char     CRYPTONOTE_NAME_TEXT[]                        = "Bitcoin Nova";
 
 const uint8_t  TRANSACTION_VERSION_1                         =  1;
 const uint8_t  TRANSACTION_VERSION_2                         =  2;
@@ -193,7 +206,7 @@ const uint8_t  BLOCK_MINOR_VERSION_0                         =  0;
 const uint8_t  BLOCK_MINOR_VERSION_1                         =  1;
 
 const size_t   BLOCKS_IDS_SYNCHRONIZING_DEFAULT_COUNT        =  10000;  //by default, blocks ids count in synchronizing
-const size_t   BLOCKS_SYNCHRONIZING_DEFAULT_COUNT            =  100;    //by default, blocks count in blocks downloading
+const uint64_t BLOCKS_SYNCHRONIZING_DEFAULT_COUNT            =  100;    //by default, blocks count in blocks downloading
 const size_t   COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT         =  1000;
 
 const int      P2P_DEFAULT_PORT                              =  45222;
@@ -205,7 +218,7 @@ const size_t   P2P_LOCAL_GRAY_PEERLIST_LIMIT                 =  5000;
 
 // P2P Network Configuration Section - This defines our current P2P network version
 // and the minimum version for communication between nodes
-const uint8_t  P2P_CURRENT_VERSION                           = 4;
+const uint8_t  P2P_CURRENT_VERSION                           = 5;
 const uint8_t  P2P_MINIMUM_VERSION                           = 2;
 
 // This defines the minimum P2P version required for lite blocks propogation
@@ -242,9 +255,8 @@ const static   boost::uuids::uuid CRYPTONOTE_NETWORK         =
 const char* const SEED_NODES[] = {
   "85.214.158.156:45222",    // Nodo-1 pool.bitcoinnova.org
   "37.59.108.203:45222",     // Node-2 37.59.108.203
-  "superblockchain.con-ip.com:45222",       // Node-3 superblockchain.con-ip.com
-  "211.200.73.100:45222",    // Node-4 (211.200.73.100)
-  "149.202.44.54:45222",     // Node-5 (149.202.44.54)
-  "81.169.166.154:45222"     // Node-6 (81.169.166.154)
+  "149.202.44.54:45222",     // Node-3 (149.202.44.54)
+  "81.169.166.154:45222",     // Node-4 (81.169.166.154)
+  "superblockchain.con-ip.com:45222" // Node-5 superblockchain.con-ip.com   
 };
 } // CryptoNote

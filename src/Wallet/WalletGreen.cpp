@@ -2,7 +2,7 @@
 // Copyright (c) 2014-2018, The Monero Project
 // Copyright (c) 2018, The BBSCoin Developers
 // Copyright (c) 2018, The Karbo Developers
-// Copyright (c) 2018, The TurtleCoin Developers
+// Copyright (c) 2018-2019, The TurtleCoin Developers
 //
 // Please see the included LICENSE file for more information.
 
@@ -34,14 +34,18 @@
 #include "CryptoNoteCore/Currency.h"
 #include "CryptoNoteCore/CryptoNoteBasicImpl.h"
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
-#include "CryptoNoteCore/CryptoNoteSerialization.h"
-#include "CryptoNoteCore/CryptoNoteTools.h"
+#include "Serialization/CryptoNoteSerialization.h"
+#include "Common/CryptoNoteTools.h"
 #include "CryptoNoteCore/TransactionApi.h"
 #include "crypto/crypto.h"
+#include <crypto/random.h>
 #include "Transfers/TransfersContainer.h"
 #include "WalletSerializationV2.h"
 #include "WalletErrors.h"
 #include "WalletUtils.h"
+
+#include <Utilities/Addresses.h>
+#include <Utilities/Utilities.h>
 
 using namespace Common;
 using namespace Crypto;
@@ -157,7 +161,7 @@ void WalletGreen::createViewWallet(const std::string &path,
     CryptoNote::AccountPublicAddress publicKeys;
     uint64_t prefix;
 
-    if (!CryptoNote::parseAccountAddressString(prefix, publicKeys, address))
+    if (!Utilities::parseAccountAddressString(prefix, publicKeys, address))
     {
         throw std::runtime_error("Failed to parse address!");
     }
@@ -321,7 +325,7 @@ void WalletGreen::initWithKeys(const std::string& path, const std::string& passw
   ContainerStorage newStorage(path, Common::FileMappedVectorOpenMode::CREATE, sizeof(ContainerStoragePrefix));
   ContainerStoragePrefix* prefix = reinterpret_cast<ContainerStoragePrefix*>(newStorage.prefix());
   prefix->version = static_cast<uint8_t>(WalletSerializerV2::SERIALIZATION_VERSION);
-  prefix->nextIv = Crypto::rand<Crypto::chacha8_iv>();
+  prefix->nextIv = Crypto::randomChachaIV();
 
   Crypto::generate_chacha8_key(password, m_key);
 
@@ -676,7 +680,7 @@ void WalletGreen::copyContainerStoragePrefix(ContainerStorage& src, const chacha
   ContainerStoragePrefix* srcPrefix = reinterpret_cast<ContainerStoragePrefix*>(src.prefix());
   ContainerStoragePrefix* dstPrefix = reinterpret_cast<ContainerStoragePrefix*>(dst.prefix());
   dstPrefix->version = srcPrefix->version;
-  dstPrefix->nextIv = Crypto::rand<chacha8_iv>();
+  dstPrefix->nextIv = Crypto::randomChachaIV();
 
   Crypto::PublicKey publicKey;
   Crypto::SecretKey secretKey;
@@ -749,12 +753,12 @@ void WalletGreen::loadSpendKeys() {
     wallet.creationTimestamp = creationTimestamp;
 
     if (i == 0) {
-      isTrackingMode = wallet.spendSecretKey == NULL_SECRET_KEY;
-    } else if ((isTrackingMode && wallet.spendSecretKey != NULL_SECRET_KEY) || (!isTrackingMode && wallet.spendSecretKey == NULL_SECRET_KEY)) {
+      isTrackingMode = wallet.spendSecretKey == Constants::NULL_SECRET_KEY;
+    } else if ((isTrackingMode && wallet.spendSecretKey != Constants::NULL_SECRET_KEY) || (!isTrackingMode && wallet.spendSecretKey == Constants::NULL_SECRET_KEY)) {
       throw std::system_error(make_error_code(error::BAD_ADDRESS), "All addresses must be whether tracking or not");
     }
 
-    if (wallet.spendSecretKey != NULL_SECRET_KEY) {
+    if (wallet.spendSecretKey != Constants::NULL_SECRET_KEY) {
       throwIfKeysMismatch(wallet.spendSecretKey, wallet.spendPublicKey, "Restored spend public key doesn't correspond to secret key");
     } else {
       if (!Crypto::check_key(wallet.spendPublicKey)) {
@@ -932,7 +936,7 @@ std::string WalletGreen::createAddress(const Crypto::PublicKey& spendPublicKey, 
         throw std::system_error(make_error_code(error::WRONG_PARAMETERS), "Wrong public key format");
     }
 
-    return doCreateAddress(spendPublicKey, NULL_SECRET_KEY, scanHeight, newAddress);
+    return doCreateAddress(spendPublicKey, Constants::NULL_SECRET_KEY, scanHeight, newAddress);
 }
 
 std::vector<std::string> WalletGreen::createAddressList(const std::vector<Crypto::SecretKey>& spendSecretKeys, const uint64_t scanHeight, const bool newAddress)
@@ -1057,10 +1061,10 @@ std::string WalletGreen::addWallet(const NewAddressData &addressData, uint64_t s
 
   auto trackingMode = getTrackingMode();
 
-  if ((trackingMode == WalletTrackingMode::TRACKING && spendSecretKey != NULL_SECRET_KEY) ||
-      (trackingMode == WalletTrackingMode::NOT_TRACKING && spendSecretKey == NULL_SECRET_KEY)) {
+  if ((trackingMode == WalletTrackingMode::TRACKING && spendSecretKey != Constants::NULL_SECRET_KEY) ||
+      (trackingMode == WalletTrackingMode::NOT_TRACKING && spendSecretKey == Constants::NULL_SECRET_KEY)) {
     m_logger(ERROR, BRIGHT_RED) << "Failed to add wallet: incompatible tracking mode and spend secret key, tracking mode=" << trackingMode <<
-      ", spendSecretKey " << (spendSecretKey == NULL_SECRET_KEY ? "is null" : "is not null");
+      ", spendSecretKey " << (spendSecretKey == Constants::NULL_SECRET_KEY ? "is null" : "is not null");
     throw std::system_error(make_error_code(error::WRONG_PARAMETERS));
   }
 
@@ -2229,7 +2233,7 @@ std::unique_ptr<CryptoNote::ITransaction> WalletGreen::makeTransaction(const std
     }
   }
 
-  std::shuffle(amountsToAddresses.begin(), amountsToAddresses.end(), std::default_random_engine{Crypto::rand<std::default_random_engine::result_type>()});
+  std::shuffle(amountsToAddresses.begin(), amountsToAddresses.end(), Random::generator());
   std::sort(amountsToAddresses.begin(), amountsToAddresses.end(), [] (const AmountToAddress& left, const AmountToAddress& right) {
     return left.second < right.second;
   });
@@ -2294,6 +2298,16 @@ size_t WalletGreen::validateSaveAndSendTransaction(const ITransactionReader& tra
   if (!fromBinaryArray(cryptoNoteTransaction, transactionData)) {
     m_logger(ERROR, BRIGHT_RED) << "Failed to deserialize created transaction. Transaction hash " << transaction.getTransactionHash();
     throw std::system_error(make_error_code(error::INTERNAL_WALLET_ERROR), "Failed to deserialize created transaction");
+  }
+
+  if (cryptoNoteTransaction.extra.size() >= CryptoNote::parameters::MAX_EXTRA_SIZE_V2)
+  {
+      m_logger(ERROR, BRIGHT_RED) << "Transaction extra is too large. Allowed: "
+                                  << CryptoNote::parameters::MAX_EXTRA_SIZE_V2
+                                  << ", actual: " << cryptoNoteTransaction.extra.size()
+                                  << ".";
+
+      throw std::system_error(make_error_code(error::EXTRA_TOO_LARGE), "Transaction extra too large");
   }
 
   uint64_t fee = transaction.getInputTotalAmount() - transaction.getOutputTotalAmount();
@@ -2405,7 +2419,7 @@ uint64_t WalletGreen::selectTransfers(
     }
   }
 
-  ShuffleGenerator<size_t, Crypto::random_engine<size_t>> indexGenerator(walletOuts.size());
+  ShuffleGenerator<size_t> indexGenerator(walletOuts.size());
   while (foundMoney < neededMoney && !indexGenerator.empty()) {
     auto& out = walletOuts[indexGenerator()];
     foundMoney += out.second.amount;
@@ -2413,7 +2427,7 @@ uint64_t WalletGreen::selectTransfers(
   }
 
   if (dust && !dustOutputs.empty()) {
-    ShuffleGenerator<size_t, Crypto::random_engine<size_t>> dustIndexGenerator(dustOutputs.size());
+    ShuffleGenerator<size_t> dustIndexGenerator(dustOutputs.size());
     do {
       auto& out = dustOutputs[dustIndexGenerator()];
       foundMoney += out.second.amount;
@@ -2825,7 +2839,7 @@ void WalletGreen::transactionUpdated(const TransactionInformation& transactionIn
     ", block " << transactionInfo.blockHeight <<
     ", totalAmountIn " << m_currency.formatAmount(transactionInfo.totalAmountIn) <<
     ", totalAmountOut " << m_currency.formatAmount(transactionInfo.totalAmountOut) <<
-    (transactionInfo.paymentId == NULL_HASH ? "" : ", paymentId " + podToHex(transactionInfo.paymentId));
+    (transactionInfo.paymentId == Constants::NULL_HASH ? "" : ", paymentId " + podToHex(transactionInfo.paymentId));
 
   if (m_state == WalletState::NOT_INITIALIZED) {
     return;
@@ -3115,7 +3129,7 @@ WalletGreen::WalletTrackingMode WalletGreen::getTrackingMode() const {
     return WalletTrackingMode::NO_ADDRESSES;
   }
 
-  return m_walletsContainer.get<RandomAccessIndex>().begin()->spendSecretKey == NULL_SECRET_KEY ?
+  return m_walletsContainer.get<RandomAccessIndex>().begin()->spendSecretKey == Constants::NULL_SECRET_KEY ?
         WalletTrackingMode::TRACKING : WalletTrackingMode::NOT_TRACKING;
 }
 
@@ -3165,7 +3179,7 @@ size_t WalletGreen::createFusionTransaction(uint64_t threshold, uint16_t mixin,
     throw std::runtime_error("You must have at least one address");
   }
 
-  size_t estimatedFusionInputsCount = m_currency.getApproximateMaximumInputCount(m_currency.fusionTxMaxSize(), MAX_FUSION_OUTPUT_COUNT, mixin);
+  size_t estimatedFusionInputsCount = Utilities::getApproximateMaximumInputCount(m_currency.fusionTxMaxSize(), MAX_FUSION_OUTPUT_COUNT, mixin);
   if (estimatedFusionInputsCount < m_currency.fusionTxMinInputCount()) {
     m_logger(ERROR, BRIGHT_RED) << "Fusion transaction mixin is too big " << mixin;
     throw std::system_error(make_error_code(error::MIXIN_COUNT_TOO_BIG));
@@ -3353,7 +3367,7 @@ std::vector<WalletGreen::OutputToTransfer> WalletGreen::pickRandomFusionInputs(c
   //now, pick the bucket
   std::vector<uint8_t> bucketNumbers(bucketSizes.size());
   std::iota(bucketNumbers.begin(), bucketNumbers.end(), 0);
-  std::shuffle(bucketNumbers.begin(), bucketNumbers.end(), std::default_random_engine{Crypto::rand<std::default_random_engine::result_type>()});
+  std::shuffle(bucketNumbers.begin(), bucketNumbers.end(), Random::generator());
   size_t bucketNumberIndex = 0;
   for (; bucketNumberIndex < bucketNumbers.size(); ++bucketNumberIndex) {
     if (bucketSizes[bucketNumbers[bucketNumberIndex]] >= minInputCount) {
@@ -3390,7 +3404,7 @@ std::vector<WalletGreen::OutputToTransfer> WalletGreen::pickRandomFusionInputs(c
     return selectedOuts;
   }
 
-  ShuffleGenerator<size_t, Crypto::random_engine<size_t>> generator(selectedOuts.size());
+  ShuffleGenerator<size_t> generator(selectedOuts.size());
   std::vector<WalletGreen::OutputToTransfer> trimmedSelectedOuts;
   trimmedSelectedOuts.reserve(maxInputCount);
   for (size_t i = 0; i < maxInputCount; ++i) {

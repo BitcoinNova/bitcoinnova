@@ -1,6 +1,7 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2018, The Monero Project
-// Copyright (c) 2018, The TurtleCoin Developers
+// Copyright (c) 2018-2019, The TurtleCoin Developers
+// Copyright (c) 2019, The CyprusCoin Developers
 //
 // Please see the included LICENSE file for more information.
 
@@ -32,6 +33,7 @@
 #include "Common/StdOutputStream.h"
 #include "Common/Util.h"
 #include "crypto/crypto.h"
+#include <crypto/random.h>
 
 #include "ConnectionContext.h"
 #include "LevinProtocol.h"
@@ -51,7 +53,7 @@ size_t get_random_index_with_fixed_probability(size_t max_index) {
   //divide by zero workaround
   if (!max_index)
     return 0;
-  size_t x = Crypto::rand<size_t>() % (max_index + 1);
+  size_t x = Random::randomValue<size_t>() % (max_index + 1);
   return (x*x*x) / (max_index*max_index); //parabola \/
 }
 
@@ -60,7 +62,7 @@ void addPortMapping(Logging::LoggerRef& logger, uint32_t port) {
   // Add UPnP port mapping
   logger(INFO) << "Attempting to add IGD port mapping.";
   int result;
-  UPNPDev* deviceList = upnpDiscover(1000, NULL, NULL, 0, 0, &result);
+  UPNPDev* deviceList = upnpDiscover(1000, NULL, NULL, 0, 0, 2, &result);
   UPNPUrls urls;
   IGDdatas igdData;
   char lanAddress[64];
@@ -248,7 +250,14 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
 
       try {
         std::ifstream p2p_data;
-        p2p_data.open(state_file_path, std::ios_base::binary | std::ios_base::in);
+
+        std::ios_base::openmode open_mode = std::ios_base::binary | std::ios_base::in;
+        /* --p2p-reset-peerstate daemon option 
+          Truncates the file if want the peer state reset */
+        if(m_p2p_state_reset) {
+          open_mode |= std::ios_base::trunc;
+        }
+        p2p_data.open(state_file_path, open_mode);
 
         if (!p2p_data.fail()) {
           StdInputStream inputStream(p2p_data);
@@ -312,7 +321,7 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
   //-----------------------------------------------------------------------------------
   bool NodeServer::make_default_config()
   {
-    m_config.m_peer_id  = Crypto::rand<uint64_t>();
+    m_config.m_peer_id = Random::randomValue<uint64_t>();
     logger(INFO, BRIGHT_WHITE) << "Generated new peer ID: " << m_config.m_peer_id;
     return true;
   }
@@ -385,6 +394,7 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
     }
     m_config_folder = config.getConfigFolder();
     m_p2p_state_filename = config.getP2pStateFilename();
+    m_p2p_state_reset = config.getP2pStateReset();
 
     if (!init_config()) {
       logger(ERROR, BRIGHT_RED) << "Failed to init config.";
@@ -783,7 +793,7 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
 
     if(!m_peerlist.get_white_peers_count() && m_seed_nodes.size()) {
       size_t try_count = 0;
-      size_t current_index = Crypto::rand<size_t>() % m_seed_nodes.size();
+      size_t current_index = Random::randomValue<size_t>() % m_seed_nodes.size();
 
       while(true) {
         if(try_to_connect_and_handshake_with_new_peer(m_seed_nodes[current_index], true))

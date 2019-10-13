@@ -8,17 +8,15 @@
 
 #include "CryptoTypes.h"
 
-#include "json.hpp"
+#include <Errors/Errors.h>
+
+#include "rapidjson/document.h"
 
 #include <string>
 
 #include <unordered_set>
 
-#include <Errors/Errors.h>
-
 #include "WalletTypes.h"
-
-using nlohmann::json;
 
 class SubWallet
 {
@@ -50,18 +48,17 @@ class SubWallet
         /////////////////////////////
 
         /* Converts the class to a json object */
-        json toJson() const;
+        void toJSON(rapidjson::Writer<rapidjson::StringBuffer> &writer) const;
 
         /* Initializes the class from a json string */
-        void fromJson(const json &j);
+        void fromJSON(const JSONValue &j);
 
         /* Generates a key image from the derivation, and stores the
            transaction input along with the key image filled in */
         Crypto::KeyImage getTxInputKeyImage( 
             const Crypto::KeyDerivation derivation,
             const size_t outputIndex,
-            WalletTypes::TransactionInput,
-            const bool isViewWallet);
+            const bool isViewWallet) const;
         
         /* Store a transaction input */
         void storeTransactionInput(
@@ -76,8 +73,6 @@ class SubWallet
         bool isPrimaryAddress() const;
 
         std::string address() const;
-
-        bool hasKeyImage(const Crypto::KeyImage keyImage) const;
 
         Crypto::PublicKey publicSpendKey() const;
         
@@ -107,6 +102,10 @@ class SubWallet
         void convertSyncTimestampToHeight(
             const uint64_t timestamp,
             const uint64_t height);
+
+        void pruneSpentInputs(const uint64_t pruneHeight);
+
+        std::vector<Crypto::KeyImage> getKeyImages() const;
 
         /////////////////////////////
         /* Public member variables */

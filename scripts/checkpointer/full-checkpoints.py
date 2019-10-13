@@ -39,7 +39,7 @@ def rpc(method, params={}):
         }
     resp = requests.post(base_url, data=json.dumps(payload)).json()
     if 'result' not in resp:
-        print ('Unexpected response, make sure Bitcoinnovad is running with block explorer enabled'
+        print ('Unexpected response, make sure Turtlecoind is running with block explorer enabled'
                , resp)
         sys.exit(-1)
     else:

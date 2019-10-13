@@ -12,8 +12,8 @@
 #include <config/CryptoNoteConfig.h>
 
 #include <CryptoNoteCore/CryptoNoteBasicImpl.h>
-#include <CryptoNoteCore/CryptoNoteTools.h>
-#include <CryptoNoteCore/TransactionExtra.h>
+#include <Common/CryptoNoteTools.h>
+#include <Common/TransactionExtra.h>
 
 #include "IWallet.h"
 
@@ -28,6 +28,8 @@
 
 #include <Wallet/WalletGreen.h>
 #include <Wallet/WalletUtils.h>
+
+#include <Utilities/Addresses.h>
 
 bool parseAmount(std::string strAmount, uint64_t &amount)
 {
@@ -945,7 +947,7 @@ Maybe<std::pair<std::string, std::string>> extractIntegratedAddress(
 
     /* Parse the AccountPublicAddress into a standard wallet address */
     /* Use the calculated prefix from earlier for less typing :p */
-    std::string address = CryptoNote::getAccountAddressAsStr(prefix, addr);
+    std::string address = Utilities::getAccountAddressAsStr(prefix, addr);
 
     /* The address out should of course be a valid address */
     if (!parseStandardAddress(address))
@@ -1049,7 +1051,7 @@ bool parseStandardAddress(std::string address, bool printErrors)
 
     CryptoNote::AccountPublicAddress addr;
 
-    const bool valid = CryptoNote::parseAccountAddressString(prefix, addr,
+    const bool valid = Utilities::parseAccountAddressString(prefix, addr,
                                                              address);
 
     if (address.length() != WalletConfig::standardAddressLength)
@@ -1066,7 +1068,7 @@ bool parseStandardAddress(std::string address, bool printErrors)
     }
     /* We can't get the actual prefix if the address is invalid for other
        reasons. To work around this, we can just check that the address starts
-       with TRTL, as long as the prefix is the TRTL prefix. This keeps it
+       with BTN, as long as the prefix is the BTN prefix. This keeps it
        working on testnets with different prefixes. */
     else if (address.substr(0, WalletConfig::addressPrefix.length()) 
           != WalletConfig::addressPrefix)

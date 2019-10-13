@@ -16,7 +16,11 @@
 // along with Bytecoin.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "Checkpoints.h"
-#include "Common/StringTools.h"
+
+#include <Common/StringTools.h>
+
+#include <config/Constants.h>
+
 #include <fstream>
 
 using namespace Logging;
@@ -26,7 +30,7 @@ namespace CryptoNote {
 Checkpoints::Checkpoints(std::shared_ptr<Logging::ILogger> log) : logger(log, "checkpoints") {}
 //---------------------------------------------------------------------------
 bool Checkpoints::addCheckpoint(uint32_t index, const std::string &hash_str) {
-  Crypto::Hash h = NULL_HASH;
+  Crypto::Hash h = Constants::NULL_HASH;
 
   if (!Common::podFromHex(hash_str, h)) {
     logger(ERROR, BRIGHT_RED) << "INVALID HASH IN CHECKPOINTS!";
@@ -62,8 +66,8 @@ bool Checkpoints::loadCheckpointsFromFile(const std::string& filename)
     /* The hash this block has (as a string) */
     std::string hash;
 
-    /* The block index (as a uint32_t) */
-    uint32_t index;
+    /* The block index (as a uint64_t) */
+    uint64_t index;
 
     /* Checkpoints file has this format:
 
@@ -78,7 +82,12 @@ bool Checkpoints::loadCheckpointsFromFile(const std::string& filename)
         /* Try and parse the indexString as an int */
         try
         {
-            index = std::stoi(indexString);
+            index = std::stoull(indexString);
+        }
+        catch (const std::out_of_range &)
+        {
+            logger(ERROR, BRIGHT_RED) << "Invalid checkpoint file format - "
+                                      << "height is out of range of uint64_t";
         }
         catch (const std::invalid_argument &)
         {
