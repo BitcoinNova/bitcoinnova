@@ -39,7 +39,7 @@ deploy:
     tag: $(APPVEYOR_REPO_TAG_NAME)
     release: $(APPVEYOR_REPO_TAG_NAME)
     auth_token:
-      secure: wWzWrJaxQR2TSvApa9TBpLowj56xpFsHKTOmQy+ed8eSh67EczxulpwMCY7hAC/H
+      secure: r7Vjf/6ZJqMnmvJg+Wa1WPgkTODBCzEbcLkywN3DA0zmIheeqlYVtCyCX1fwkf0z
     repository: BitcoinNova/bitcoinnova
     artifact: BitcoinNovaRelease
     draft: false
