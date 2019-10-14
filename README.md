@@ -1,12 +1,11 @@
 ![image](http://pool.bitcoinn.biz/bitcoin-nova.png)
 
 #### Master Build Status
-[![Build Status](https://travis-ci.org/SuperBlockchainPool/Bitcoinnova-0.14.6.svg?branch=master)](https://travis-ci.org/SuperBlockchainPool/Bitcoinnova-0.14.6) [![Build status](https://ci.appveyor.com/api/projects/status/8a15f6kaa6277sks?svg=true)](https://ci.appveyor.com/project/SuperBlockchain-Pool/bitcoinnova-0-14-6) [![Codefresh build status]( https://g.codefresh.io/api/badges/pipeline/superblockchainpool/Bitcoin%20Nova%20Project%2FBitcoin%20Nova?type=cf-1)]( https://g.codefresh.io/public/accounts/superblockchainpool/pipelines/5d9b8991986b07820948079c)
+[![Build Status](https://travis-ci.org/BitcoinNova/bitcoinnova.svg?branch=master)](https://travis-ci.org/BitcoinNova/bitcoinnova) [![Build status](https://ci.appveyor.com/api/projects/status/orcx0patfda5g5o4?svg=true)](https://ci.appveyor.com/project/BitcoinNovaProject/bitcoinnova) [![Codefresh build status]( https://g.codefresh.io/api/badges/pipeline/superblockchainpool/Bitcoin%20Nova%20Project%2FBitcoin%20Nova?type=cf-1)]( https://g.codefresh.io/public/accounts/superblockchainpool/pipelines/5d9b8991986b07820948079c)
 
 ### Installing
 
-We offer binary images of the latest releases here: http://latest.bitcoinnova.org
-
+We offer binary images of the latest releases here: [http://latest.bitcoinnova.org](https://github.com/BitcoinNova/bitcoinnova/releases/)
 If you would like to compile yourself, read on.
 
 ### How To Compile
