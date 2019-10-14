@@ -1,7 +1,7 @@
 ![image](http://pool.bitcoinn.biz/bitcoin-nova.png)
 
 #### Master Build Status
-[![Build Status](https://travis-ci.org/BitcoinNova/bitcoinnova.svg?branch=master)](https://travis-ci.org/BitcoinNova/bitcoinnova) [![Build status](https://ci.appveyor.com/api/projects/status/orcx0patfda5g5o4?svg=true)](https://ci.appveyor.com/project/BitcoinNovaProject/bitcoinnova) [![Codefresh build status]( https://g.codefresh.io/api/badges/pipeline/superblockchainpool/Bitcoin%20Nova%20Project%2FBitcoin%20Nova?type=cf-1)]( https://g.codefresh.io/public/accounts/superblockchainpool/pipelines/5d9b8991986b07820948079c)
+[![Build Status](https://travis-ci.org/BitcoinNova/bitcoinnova.svg?branch=master)](https://travis-ci.org/BitcoinNova/bitcoinnova) [![Build status](https://ci.appveyor.com/api/projects/status/0lcblve16aqbl006?svg=true)](https://ci.appveyor.com/project/BitcoinNovaProject/bitcoinnova)[![Codefresh build status]( https://g.codefresh.io/api/badges/pipeline/bitcoinnovaproject/BitcoinNova%2FBitcoinNova?type=cf-1)]( https://g.codefresh.io/public/accounts/bitcoinnovaproject/pipelines/5da230ad77411a0fcec077dd)
 
 ### Installing
 
