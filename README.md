@@ -4,7 +4,7 @@
 [![GitHub All Releases](https://img.shields.io/github/downloads/BitcoinNova/bitcoinnova/total?label=Downloads)](http://latest.bitcoinnova.org) 
 [![GitHub contributors](https://img.shields.io/github/contributors-anon/BitcoinNova/bitcoinnova?label=Contributors)](https://github.com/BitcoinNova/bitcoinnova/graphs/contributors) 
 [![GitHub issues](https://img.shields.io/github/issues/BitcoinNova/bitcoinnova?label=Issues)](https://github.com/BitcoinNova/bitcoinnova/issues) 
-[!GitHub stars](https://img.shields.io/github/stars/BitcoinNova/bitcoinnova?label=Github%20Stars)
+![Version](https://img.shields.io/github/v/release/BitcoinNova/bitcoinnova)
 
 #### Master Build Status
 [![Build Status](https://travis-ci.org/BitcoinNova/bitcoinnova.svg?branch=master)](https://travis-ci.org/BitcoinNova/bitcoinnova) [![Build status](https://ci.appveyor.com/api/projects/status/0lcblve16aqbl006?svg=true)](https://ci.appveyor.com/project/BitcoinNovaProject/bitcoinnova)
