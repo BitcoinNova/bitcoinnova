@@ -24,6 +24,13 @@ services:
 #      testnet:
 #        ipv4_address: 172.16.76.13
 
+#  node4:
+#    image: funkypenguin/bitcoinnova
+#    container_name: bitcoinnovatest-node4
+#    networks:
+#      testnet:
+#        ipv4_address: 172.16.76.14
+
 networks:
   testnet:
     ipam:
