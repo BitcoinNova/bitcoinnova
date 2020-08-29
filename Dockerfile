@@ -1,15 +1,3 @@
-FROM ubuntu:18.04 as builder
-
-# Allows us to auto-discover the latest release from the repo
-ARG BitcoinNova/bitcoinnova
-ENV REPO=${REPO}
-
-# BUILD_DATE and VCS_REF are immaterial, since this is a 2-stage build, but our build
-# hook won't work unless we specify the args
-ARG BUILD_DATE
-ARG VCS_REF
-
-# install build dependencies
 # checkout the latest tag
 # build and install
 RUN apt-get update && \
