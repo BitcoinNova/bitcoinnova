@@ -4,25 +4,23 @@
 //  (found in the LICENSE.Apache file in the root directory).
 #ifndef ROCKSDB_LITE
 
-#ifndef __STDC_FORMAT_MACROS
-#define __STDC_FORMAT_MACROS
-#endif
-
 #include "utilities/blob_db/blob_dump_tool.h"
-#include <inttypes.h>
 #include <stdio.h>
+#include <cinttypes>
 #include <iostream>
 #include <memory>
 #include <string>
+#include "env/composite_env_wrapper.h"
+#include "file/random_access_file_reader.h"
+#include "file/readahead_raf.h"
 #include "port/port.h"
 #include "rocksdb/convenience.h"
 #include "rocksdb/env.h"
 #include "table/format.h"
 #include "util/coding.h"
-#include "util/file_reader_writer.h"
 #include "util/string_util.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 namespace blob_db {
 
 BlobDumpTool::BlobDumpTool()
@@ -53,7 +51,8 @@ Status BlobDumpTool::Run(const std::string& filename, DisplayType show_key,
   if (file_size == 0) {
     return Status::Corruption("File is empty.");
   }
-  reader_.reset(new RandomAccessFileReader(std::move(file), filename));
+  reader_.reset(new RandomAccessFileReader(
+      NewLegacyRandomAccessFileWrapper(file), filename));
   uint64_t offset = 0;
   uint64_t footer_offset = 0;
   CompressionType compression = kNoCompression;
@@ -102,7 +101,8 @@ Status BlobDumpTool::Read(uint64_t offset, size_t size, Slice* result) {
     }
     buffer_.reset(new char[buffer_size_]);
   }
-  Status s = reader_->Read(offset, size, result, buffer_.get());
+  Status s =
+      reader_->Read(IOOptions(), offset, size, result, buffer_.get(), nullptr);
   if (!s.ok()) {
     return s;
   }
@@ -199,7 +199,7 @@ Status BlobDumpTool::DumpRecord(DisplayType show_key, DisplayType show_blob,
     fprintf(stdout, "  expiration : %" PRIu64 "\n", record.expiration);
   }
   *offset += BlobLogRecord::kHeaderSize;
-  s = Read(*offset, key_size + value_size, &slice);
+  s = Read(*offset, static_cast<size_t>(key_size + value_size), &slice);
   if (!s.ok()) {
     return s;
   }
@@ -208,10 +208,13 @@ Status BlobDumpTool::DumpRecord(DisplayType show_key, DisplayType show_blob,
   if (compression != kNoCompression &&
       (show_uncompressed_blob != DisplayType::kNone || show_summary)) {
     BlockContents contents;
-    UncompressionContext uncompression_ctx(compression);
+    UncompressionContext context(compression);
+    UncompressionInfo info(context, UncompressionDict::GetEmptyDict(),
+                           compression);
     s = UncompressBlockContentsForCompressionType(
-        uncompression_ctx, slice.data() + key_size, value_size, &contents,
-        2 /*compress_format_version*/, ImmutableCFOptions(Options()));
+        info, slice.data() + key_size, static_cast<size_t>(value_size),
+        &contents, 2 /*compress_format_version*/,
+        ImmutableCFOptions(Options()));
     if (!s.ok()) {
       return s;
     }
@@ -219,10 +222,10 @@ Status BlobDumpTool::DumpRecord(DisplayType show_key, DisplayType show_blob,
   }
   if (show_key != DisplayType::kNone) {
     fprintf(stdout, "  key        : ");
-    DumpSlice(Slice(slice.data(), key_size), show_key);
+    DumpSlice(Slice(slice.data(), static_cast<size_t>(key_size)), show_key);
     if (show_blob != DisplayType::kNone) {
       fprintf(stdout, "  blob       : ");
-      DumpSlice(Slice(slice.data() + key_size, value_size), show_blob);
+      DumpSlice(Slice(slice.data() + static_cast<size_t>(key_size), static_cast<size_t>(value_size)), show_blob);
     }
     if (show_uncompressed_blob != DisplayType::kNone) {
       fprintf(stdout, "  raw blob   : ");
@@ -271,6 +274,6 @@ std::string BlobDumpTool::GetString(std::pair<T, T> p) {
 }
 
 }  // namespace blob_db
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 
 #endif  // ROCKSDB_LITE

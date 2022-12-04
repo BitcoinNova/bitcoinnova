@@ -9,18 +9,18 @@
 
 #include "db/merge_helper.h"
 #include "rocksdb/comparator.h"
+#include "test_util/testharness.h"
+#include "test_util/testutil.h"
 #include "util/coding.h"
-#include "util/testharness.h"
-#include "util/testutil.h"
 #include "utilities/merge_operators.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 class MergeHelperTest : public testing::Test {
  public:
   MergeHelperTest() { env_ = Env::Default(); }
 
-  ~MergeHelperTest() = default;
+  ~MergeHelperTest() override = default;
 
   Status Run(SequenceNumber stop_before, bool at_bottom,
              SequenceNumber latest_snapshot = 0) {
@@ -130,7 +130,7 @@ TEST_F(MergeHelperTest, SingleOperand) {
 
   AddKeyVal("a", 50, kTypeMerge, test::EncodeInt(1U));
 
-  ASSERT_TRUE(Run(31, true).IsMergeInProgress());
+  ASSERT_TRUE(Run(31, false).IsMergeInProgress());
   ASSERT_FALSE(iter_->Valid());
   ASSERT_EQ(test::KeyStr("a", 50, kTypeMerge), merge_helper_->keys()[0]);
   ASSERT_EQ(test::EncodeInt(1U), merge_helper_->values()[0]);
@@ -282,7 +282,7 @@ TEST_F(MergeHelperTest, DontFilterMergeOperandsBeforeSnapshotTest) {
   ASSERT_FALSE(merge_output_iter.Valid());
 }
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);

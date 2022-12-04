@@ -9,17 +9,12 @@
 //
 // See port_example.h for documentation for the following types/functions.
 
-#ifndef STORAGE_LEVELDB_PORT_PORT_WIN_H_
-#define STORAGE_LEVELDB_PORT_PORT_WIN_H_
+#pragma once
 
 // Always want minimum headers
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-
-// Assume that for everywhere
-#undef PLATFORM_IS_LITTLE_ENDIAN
-#define PLATFORM_IS_LITTLE_ENDIAN true
 
 #include <windows.h>
 #include <string>
@@ -71,13 +66,11 @@ typedef SSIZE_T ssize_t;
 
 #endif
 
-#ifndef PLATFORM_IS_LITTLE_ENDIAN
-#define PLATFORM_IS_LITTLE_ENDIAN (__BYTE_ORDER == __LITTLE_ENDIAN)
-#endif
-
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 #define PREFETCH(addr, rw, locality)
+
+extern const bool kDefaultToAdaptiveMutex;
 
 namespace port {
 
@@ -94,7 +87,9 @@ namespace port {
 // For use at db/file_indexer.h kLevelMaxIndex
 const uint32_t kMaxUint32 = UINT32_MAX;
 const int kMaxInt32 = INT32_MAX;
+const int kMinInt32 = INT32_MIN;
 const int64_t kMaxInt64 = INT64_MAX;
+const int64_t kMinInt64 = INT64_MIN;
 const uint64_t kMaxUint64 = UINT64_MAX;
 
 #ifdef _WIN64
@@ -110,21 +105,26 @@ const size_t kMaxSizet = UINT_MAX;
 // For use at db/file_indexer.h kLevelMaxIndex
 const uint32_t kMaxUint32 = std::numeric_limits<uint32_t>::max();
 const int kMaxInt32 = std::numeric_limits<int>::max();
+const int kMinInt32 = std::numeric_limits<int>::min();
 const uint64_t kMaxUint64 = std::numeric_limits<uint64_t>::max();
 const int64_t kMaxInt64 = std::numeric_limits<int64_t>::max();
+const int64_t kMinInt64 = std::numeric_limits<int64_t>::min();
 
 const size_t kMaxSizet = std::numeric_limits<size_t>::max();
 
 #endif //_MSC_VER
 
-const bool kLittleEndian = true;
+// "Windows is designed to run on little-endian computer architectures."
+// https://docs.microsoft.com/en-us/windows/win32/sysinfo/registry-value-types
+constexpr bool kLittleEndian = true;
+#undef PLATFORM_IS_LITTLE_ENDIAN
 
 class CondVar;
 
 class Mutex {
  public:
 
-   /* implicit */ Mutex(bool adaptive = false)
+   /* implicit */ Mutex(bool adaptive = kDefaultToAdaptiveMutex)
 #ifndef NDEBUG
      : locked_(false)
 #endif
@@ -175,6 +175,9 @@ class Mutex {
 class RWMutex {
  public:
   RWMutex() { InitializeSRWLock(&srwLock_); }
+  // No copying allowed
+  RWMutex(const RWMutex&) = delete;
+  void operator=(const RWMutex&) = delete;
 
   void ReadLock() { AcquireSRWLockShared(&srwLock_); }
 
@@ -189,9 +192,6 @@ class RWMutex {
 
  private:
   SRWLOCK srwLock_;
-  // No copying allowed
-  RWMutex(const RWMutex&);
-  void operator=(const RWMutex&);
 };
 
 class CondVar {
@@ -265,6 +265,8 @@ inline void cacheline_aligned_free(void *memblock) {
 #endif
 }
 
+extern const size_t kPageSize;
+
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=52991 for MINGW32
 // could not be worked around with by -mno-ms-bitfields
 #ifndef __MINGW32__
@@ -328,10 +330,69 @@ inline void* pthread_getspecific(pthread_key_t key) {
 // using C-runtime to implement. Note, this does not
 // feel space with zeros in case the file is extended.
 int truncate(const char* path, int64_t length);
+int Truncate(std::string path, int64_t length);
 void Crash(const std::string& srcfile, int srcline);
 extern int GetMaxOpenFiles();
+std::string utf16_to_utf8(const std::wstring& utf16);
+std::wstring utf8_to_utf16(const std::string& utf8);
+
+using ThreadId = int;
+
+extern void SetCpuPriority(ThreadId id, CpuPriority priority);
 
 }  // namespace port
+
+
+#ifdef ROCKSDB_WINDOWS_UTF8_FILENAMES
+
+#define RX_FILESTRING std::wstring
+#define RX_FN(a) ROCKSDB_NAMESPACE::port::utf8_to_utf16(a)
+#define FN_TO_RX(a) ROCKSDB_NAMESPACE::port::utf16_to_utf8(a)
+#define RX_FNLEN(a) ::wcslen(a)
+
+#define RX_DeleteFile DeleteFileW
+#define RX_CreateFile CreateFileW
+#define RX_CreateFileMapping CreateFileMappingW
+#define RX_GetFileAttributesEx GetFileAttributesExW
+#define RX_FindFirstFileEx FindFirstFileExW
+#define RX_FindNextFile FindNextFileW
+#define RX_WIN32_FIND_DATA WIN32_FIND_DATAW
+#define RX_CreateDirectory CreateDirectoryW
+#define RX_RemoveDirectory RemoveDirectoryW
+#define RX_GetFileAttributesEx GetFileAttributesExW
+#define RX_MoveFileEx MoveFileExW
+#define RX_CreateHardLink CreateHardLinkW
+#define RX_PathIsRelative PathIsRelativeW
+#define RX_GetCurrentDirectory GetCurrentDirectoryW
+#define RX_GetDiskFreeSpaceEx GetDiskFreeSpaceExW
+#define RX_PathIsDirectory PathIsDirectoryW
+
+#else
+
+#define RX_FILESTRING std::string
+#define RX_FN(a) a
+#define FN_TO_RX(a) a
+#define RX_FNLEN(a) strlen(a)
+
+#define RX_DeleteFile DeleteFileA
+#define RX_CreateFile CreateFileA
+#define RX_CreateFileMapping CreateFileMappingA
+#define RX_GetFileAttributesEx GetFileAttributesExA
+#define RX_FindFirstFileEx FindFirstFileExA
+#define RX_CreateDirectory CreateDirectoryA
+#define RX_FindNextFile FindNextFileA
+#define RX_WIN32_FIND_DATA WIN32_FIND_DATA
+#define RX_CreateDirectory CreateDirectoryA
+#define RX_RemoveDirectory RemoveDirectoryA
+#define RX_GetFileAttributesEx GetFileAttributesExA
+#define RX_MoveFileEx MoveFileExA
+#define RX_CreateHardLink CreateHardLinkA
+#define RX_PathIsRelative PathIsRelativeA
+#define RX_GetCurrentDirectory GetCurrentDirectoryA
+#define RX_GetDiskFreeSpaceEx GetDiskFreeSpaceExA
+#define RX_PathIsDirectory PathIsDirectoryA
+
+#endif
 
 using port::pthread_key_t;
 using port::pthread_key_create;
@@ -340,6 +401,4 @@ using port::pthread_setspecific;
 using port::pthread_getspecific;
 using port::truncate;
 
-}  // namespace rocksdb
-
-#endif  // STORAGE_LEVELDB_PORT_PORT_WIN_H_
+}  // namespace ROCKSDB_NAMESPACE

@@ -7,15 +7,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
-#ifndef __STDC_FORMAT_MACROS
-#define __STDC_FORMAT_MACROS
-#endif
-
 #include <cstring>
 
 #include "options/options_helper.h"
 #include "rocksdb/convenience.h"
-#include "util/testharness.h"
+#include "test_util/testharness.h"
 
 #ifndef GFLAGS
 bool FLAGS_enable_print = false;
@@ -25,7 +21,7 @@ using GFLAGS_NAMESPACE::ParseCommandLineFlags;
 DEFINE_bool(enable_print, false, "Print options generated to console.");
 #endif  // GFLAGS
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 // Verify options are settable from options strings.
 // We take the approach that depends on compiler behavior that copy constructor
@@ -46,13 +42,14 @@ const char kSpecialChar = 'z';
 typedef std::vector<std::pair<size_t, size_t>> OffsetGap;
 
 void FillWithSpecialChar(char* start_ptr, size_t total_size,
-                         const OffsetGap& blacklist) {
+                         const OffsetGap& blacklist,
+                         char special_char = kSpecialChar) {
   size_t offset = 0;
   for (auto& pair : blacklist) {
-    std::memset(start_ptr + offset, kSpecialChar, pair.first - offset);
+    std::memset(start_ptr + offset, special_char, pair.first - offset);
     offset = pair.first + pair.second;
   }
-  std::memset(start_ptr + offset, kSpecialChar, total_size - offset);
+  std::memset(start_ptr + offset, special_char, total_size - offset);
 }
 
 int NumUnsetBytes(char* start_ptr, size_t total_size,
@@ -73,6 +70,26 @@ int NumUnsetBytes(char* start_ptr, size_t total_size,
     }
   }
   return total_unset_bytes_base;
+}
+
+// Return true iff two structs are the same except blacklist fields.
+bool CompareBytes(char* start_ptr1, char* start_ptr2, size_t total_size,
+                  const OffsetGap& blacklist) {
+  size_t offset = 0;
+  for (auto& pair : blacklist) {
+    for (; offset < pair.first; offset++) {
+      if (*(start_ptr1 + offset) != *(start_ptr2 + offset)) {
+        return false;
+      }
+    }
+    offset = pair.first + pair.second;
+  }
+  for (; offset < total_size; offset++) {
+    if (*(start_ptr1 + offset) != *(start_ptr2 + offset)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 // If the test fails, likely a new option is added to BlockBasedTableOptions
@@ -142,6 +159,9 @@ TEST_F(OptionsSettableTest, BlockBasedTableOptionsAllFieldsSettable) {
       "pin_l0_filter_and_index_blocks_in_cache=1;"
       "pin_top_level_index_and_filter=1;"
       "index_type=kHashSearch;"
+      "data_block_index_type=kDataBlockBinaryAndHash;"
+      "index_shortening=kNoShortening;"
+      "data_block_hash_table_util_ratio=0.75;"
       "checksum=kxxHash;hash_index_allow_collision=1;no_block_cache=1;"
       "block_cache=1M;block_cache_compressed=1k;block_size=1024;"
       "block_size_deviation=8;block_restart_interval=4; "
@@ -198,6 +218,8 @@ TEST_F(OptionsSettableTest, DBOptionsAllFieldsSettable) {
        sizeof(std::vector<std::shared_ptr<EventListener>>)},
       {offsetof(struct DBOptions, row_cache), sizeof(std::shared_ptr<Cache>)},
       {offsetof(struct DBOptions, wal_filter), sizeof(const WalFilter*)},
+      {offsetof(struct DBOptions, file_checksum_gen_factory),
+       sizeof(std::shared_ptr<FileChecksumGenFactory>)},
   };
 
   char* options_ptr = new char[sizeof(DBOptions)];
@@ -230,6 +252,7 @@ TEST_F(OptionsSettableTest, DBOptionsAllFieldsSettable) {
                              "delete_obsolete_files_period_micros=4294967758;"
                              "WAL_ttl_seconds=4295008036;"
                              "WAL_size_limit_MB=4295036161;"
+                             "max_write_batch_group_size_bytes=1048576;"
                              "wal_dir=path/to/wal_dir;"
                              "db_write_buffer_size=2587;"
                              "max_subcompactions=64330;"
@@ -246,6 +269,7 @@ TEST_F(OptionsSettableTest, DBOptionsAllFieldsSettable) {
                              "new_table_reader_for_compaction_inputs=false;"
                              "keep_log_file_num=4890;"
                              "skip_stats_update_on_db_open=false;"
+                             "skip_checking_sst_file_sizes_on_db_open=false;"
                              "max_manifest_file_size=4295009941;"
                              "db_log_dir=path/to/db_log_dir;"
                              "skip_log_error_on_recovery=true;"
@@ -253,6 +277,7 @@ TEST_F(OptionsSettableTest, DBOptionsAllFieldsSettable) {
                              "paranoid_checks=true;"
                              "is_fd_close_on_exec=false;"
                              "bytes_per_sync=4295013613;"
+                             "strict_bytes_per_sync=true;"
                              "enable_thread_tracking=false;"
                              "recycle_log_file_num=0;"
                              "create_missing_column_families=true;"
@@ -264,6 +289,9 @@ TEST_F(OptionsSettableTest, DBOptionsAllFieldsSettable) {
                              "manifest_preallocation_size=1222;"
                              "allow_mmap_writes=false;"
                              "stats_dump_period_sec=70127;"
+                             "stats_persist_period_sec=54321;"
+                             "persist_stats_to_disk=true;"
+                             "stats_history_buffer_size=14159;"
                              "allow_fallocate=true;"
                              "allow_mmap_reads=false;"
                              "use_direct_reads=false;"
@@ -273,6 +301,7 @@ TEST_F(OptionsSettableTest, DBOptionsAllFieldsSettable) {
                              "advise_random_on_open=true;"
                              "fail_if_options_file_error=false;"
                              "enable_pipelined_write=false;"
+                             "unordered_write=false;"
                              "allow_concurrent_memtable_write=true;"
                              "wal_recovery_mode=kPointInTimeRecovery;"
                              "enable_write_thread_adaptive_yield=true;"
@@ -289,7 +318,12 @@ TEST_F(OptionsSettableTest, DBOptionsAllFieldsSettable) {
                              "concurrent_prepare=false;"
                              "two_write_queues=false;"
                              "manual_wal_flush=false;"
-                             "seq_per_batch=false;",
+                             "seq_per_batch=false;"
+                             "atomic_flush=false;"
+                             "avoid_unnecessary_blocking_io=false;"
+                             "log_readahead_size=0;"
+                             "write_dbid_to_manifest=false;"
+                             "best_efforts_recovery=false",
                              new_options));
 
   ASSERT_EQ(unset_bytes_base, NumUnsetBytes(new_options_ptr, sizeof(DBOptions),
@@ -344,10 +378,12 @@ TEST_F(OptionsSettableTest, ColumnFamilyOptionsAllFieldsSettable) {
        sizeof(std::shared_ptr<CompactionFilterFactory>)},
       {offset_of(&ColumnFamilyOptions::prefix_extractor),
        sizeof(std::shared_ptr<const SliceTransform>)},
+      {offset_of(&ColumnFamilyOptions::snap_refresh_nanos), sizeof(uint64_t)},
       {offset_of(&ColumnFamilyOptions::table_factory),
        sizeof(std::shared_ptr<TableFactory>)},
-      {offset_of(&ColumnFamilyOptions::cf_paths),
-       sizeof(std::vector<DbPath>)},
+      {offset_of(&ColumnFamilyOptions::cf_paths), sizeof(std::vector<DbPath>)},
+      {offset_of(&ColumnFamilyOptions::compaction_thread_limiter),
+       sizeof(std::shared_ptr<ConcurrentTaskLimiter>)},
   };
 
   char* options_ptr = new char[sizeof(ColumnFamilyOptions)];
@@ -358,6 +394,7 @@ TEST_F(OptionsSettableTest, ColumnFamilyOptionsAllFieldsSettable) {
   ColumnFamilyOptions* options = new (options_ptr) ColumnFamilyOptions();
   FillWithSpecialChar(options_ptr, sizeof(ColumnFamilyOptions),
                       kColumnFamilyOptionsBlacklist);
+
   // It based on the behavior of compiler that padding bytes are not changed
   // when copying the struct. It's prone to failure when compiler behavior
   // changes. We verify there is unset bytes to detect the case.
@@ -380,12 +417,11 @@ TEST_F(OptionsSettableTest, ColumnFamilyOptionsAllFieldsSettable) {
   // GetColumnFamilyOptionsFromString():
   options->rate_limit_delay_max_milliseconds = 33;
   options->compaction_options_universal = CompactionOptionsUniversal();
-  options->compression_opts = CompressionOptions();
-  options->bottommost_compression_opts = CompressionOptions();
   options->hard_rate_limit = 0;
   options->soft_rate_limit = 0;
   options->purge_redundant_kvs_while_flush = false;
   options->max_mem_compaction_level = 0;
+  options->compaction_filter = nullptr;
 
   char* new_options_ptr = new char[sizeof(ColumnFamilyOptions)];
   ColumnFamilyOptions* new_options =
@@ -418,6 +454,8 @@ TEST_F(OptionsSettableTest, ColumnFamilyOptionsAllFieldsSettable) {
       "max_bytes_for_level_multiplier=60;"
       "memtable_factory=SkipListFactory;"
       "compression=kNoCompression;"
+      "compression_opts=5:6:7:8:9:true;"
+      "bottommost_compression_opts=4:5:6:7:8:true;"
       "bottommost_compression=kDisableCompressionOption;"
       "level0_stop_writes_trigger=33;"
       "num_levels=99;"
@@ -427,8 +465,10 @@ TEST_F(OptionsSettableTest, ColumnFamilyOptionsAllFieldsSettable) {
       "soft_rate_limit=530.615385;"
       "soft_pending_compaction_bytes_limit=0;"
       "max_write_buffer_number_to_maintain=84;"
+      "max_write_buffer_size_to_maintain=2147483648;"
       "merge_operator=aabcxehazrMergeOperator;"
       "memtable_prefix_bloom_size_ratio=0.4642;"
+      "memtable_whole_key_filtering=true;"
       "memtable_insert_with_hint_prefix_extractor=rocksdb.CappedPrefix.13;"
       "paranoid_file_checks=true;"
       "force_consistency_checks=true;"
@@ -442,7 +482,9 @@ TEST_F(OptionsSettableTest, ColumnFamilyOptionsAllFieldsSettable) {
       "disable_auto_compactions=false;"
       "report_bg_io_stats=true;"
       "ttl=60;"
-      "compaction_options_fifo={max_table_files_size=3;ttl=100;allow_"
+      "periodic_compaction_seconds=3600;"
+      "sample_for_compression=0;"
+      "compaction_options_fifo={max_table_files_size=3;allow_"
       "compaction=false;};",
       new_options));
 
@@ -450,17 +492,64 @@ TEST_F(OptionsSettableTest, ColumnFamilyOptionsAllFieldsSettable) {
             NumUnsetBytes(new_options_ptr, sizeof(ColumnFamilyOptions),
                           kColumnFamilyOptionsBlacklist));
 
+  ColumnFamilyOptions rnd_filled_options = *new_options;
+
   options->~ColumnFamilyOptions();
   new_options->~ColumnFamilyOptions();
 
   delete[] options_ptr;
   delete[] new_options_ptr;
+
+  // Test copying to mutabable and immutable options and copy back the mutable
+  // part.
+  const OffsetGap kMutableCFOptionsBlacklist = {
+      {offset_of(&MutableCFOptions::prefix_extractor),
+       sizeof(std::shared_ptr<const SliceTransform>)},
+      {offset_of(&MutableCFOptions::max_bytes_for_level_multiplier_additional),
+       sizeof(std::vector<int>)},
+      {offset_of(&MutableCFOptions::max_file_size),
+       sizeof(std::vector<uint64_t>)},
+  };
+
+  // For all memory used for options, pre-fill every char. Otherwise, the
+  // padding bytes might be different so that byte-wise comparison doesn't
+  // general equal results even if objects are equal.
+  const char kMySpecialChar = 'x';
+  char* mcfo1_ptr = new char[sizeof(MutableCFOptions)];
+  FillWithSpecialChar(mcfo1_ptr, sizeof(MutableCFOptions),
+                      kMutableCFOptionsBlacklist, kMySpecialChar);
+  char* mcfo2_ptr = new char[sizeof(MutableCFOptions)];
+  FillWithSpecialChar(mcfo2_ptr, sizeof(MutableCFOptions),
+                      kMutableCFOptionsBlacklist, kMySpecialChar);
+
+  // A clean column family options is constructed after filling the same special
+  // char as the initial one. So that the padding bytes are the same.
+  char* cfo_clean_ptr = new char[sizeof(ColumnFamilyOptions)];
+  FillWithSpecialChar(cfo_clean_ptr, sizeof(ColumnFamilyOptions),
+                      kColumnFamilyOptionsBlacklist);
+  rnd_filled_options.num_levels = 66;
+  ColumnFamilyOptions* cfo_clean = new (cfo_clean_ptr) ColumnFamilyOptions();
+
+  MutableCFOptions* mcfo1 =
+      new (mcfo1_ptr) MutableCFOptions(rnd_filled_options);
+  ColumnFamilyOptions cfo_back = BuildColumnFamilyOptions(*cfo_clean, *mcfo1);
+  MutableCFOptions* mcfo2 = new (mcfo2_ptr) MutableCFOptions(cfo_back);
+
+  ASSERT_TRUE(CompareBytes(mcfo1_ptr, mcfo2_ptr, sizeof(MutableCFOptions),
+                           kMutableCFOptionsBlacklist));
+
+  cfo_clean->~ColumnFamilyOptions();
+  mcfo1->~MutableCFOptions();
+  mcfo2->~MutableCFOptions();
+  delete[] mcfo1_ptr;
+  delete[] mcfo2_ptr;
+  delete[] cfo_clean_ptr;
 }
 #endif  // !__clang__
 #endif  // OS_LINUX || OS_WIN
 #endif  // !ROCKSDB_LITE
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);

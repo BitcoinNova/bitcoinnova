@@ -11,7 +11,7 @@
 #include "port/port.h"
 #include "util/autovector.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 // Binary heap implementation optimized for use in multi-way merge sort.
 // Comparison to std::priority_queue:
@@ -92,9 +92,9 @@ class BinaryHeap {
     reset_root_cmp_cache();
   }
 
-  bool empty() const {
-    return data_.empty();
-  }
+  bool empty() const { return data_.empty(); }
+
+  size_t size() const { return data_.size(); }
 
   void reset_root_cmp_cache() { root_cmp_cache_ = port::kMaxSizet; }
 
@@ -163,4 +163,4 @@ class BinaryHeap {
   size_t root_cmp_cache_ = port::kMaxSizet;
 };
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

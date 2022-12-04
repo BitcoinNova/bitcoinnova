@@ -3,22 +3,18 @@
 //  COPYING file in the root directory) and Apache 2.0 License
 //  (found in the LICENSE.Apache file in the root directory).
 
-#ifndef __STDC_FORMAT_MACROS
-#define __STDC_FORMAT_MACROS
-#endif
-
 #include "db/db_info_dumper.h"
 
-#include <inttypes.h>
 #include <stdio.h>
-#include <string>
 #include <algorithm>
+#include <cinttypes>
+#include <string>
 #include <vector>
 
+#include "file/filename.h"
 #include "rocksdb/env.h"
-#include "util/filename.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 void DumpDBFileSummary(const ImmutableDBOptions& options,
                        const std::string& dbname) {
@@ -42,7 +38,7 @@ void DumpDBFileSummary(const ImmutableDBOptions& options,
           "Error when reading %s dir\n", dbname.c_str());
   }
   std::sort(files.begin(), files.end());
-  for (std::string file : files) {
+  for (const std::string& file : files) {
     if (!ParseFileName(file, &number, &type)) {
       continue;
     }
@@ -85,7 +81,7 @@ void DumpDBFileSummary(const ImmutableDBOptions& options,
         continue;
       }
       std::sort(files.begin(), files.end());
-      for (std::string file : files) {
+      for (const std::string& file : files) {
         if (ParseFileName(file, &number, &type)) {
           if (type == kTableFile && ++file_num < 10) {
             file_info.append(file).append(" ");
@@ -109,7 +105,7 @@ void DumpDBFileSummary(const ImmutableDBOptions& options,
       return;
     }
     wal_info.clear();
-    for (std::string file : files) {
+    for (const std::string& file : files) {
       if (ParseFileName(file, &number, &type)) {
         if (type == kLogFile) {
           env->GetFileSize(options.wal_dir + "/" + file, &file_size);
@@ -124,4 +120,4 @@ void DumpDBFileSummary(const ImmutableDBOptions& options,
   Header(options.info_log, "Write Ahead Log file in %s: %s\n",
          options.wal_dir.c_str(), wal_info.c_str());
 }
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

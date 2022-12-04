@@ -12,12 +12,14 @@
 #include "db/dbformat.h"
 #include "rocksdb/types.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 class Comparator;
-class InternalIterator;
 class Env;
 class Arena;
+template <class TValue>
+class InternalIteratorBase;
+using InternalIterator = InternalIteratorBase<Slice>;
 
 // Return an iterator that provided the union of the data in
 // children[0,n-1].  Takes ownership of the child iterators and
@@ -59,4 +61,4 @@ class MergeIteratorBuilder {
   Arena* arena;
 };
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

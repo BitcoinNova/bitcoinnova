@@ -13,14 +13,13 @@
 #include <memory>
 
 #include "db/log_format.h"
+#include "rocksdb/io_status.h"
 #include "rocksdb/slice.h"
 #include "rocksdb/status.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 class WritableFileWriter;
-
-using std::unique_ptr;
 
 namespace log {
 
@@ -72,23 +71,30 @@ class Writer {
   // Create a writer that will append data to "*dest".
   // "*dest" must be initially empty.
   // "*dest" must remain live while this Writer is in use.
-  explicit Writer(unique_ptr<WritableFileWriter>&& dest, uint64_t log_number,
-                  bool recycle_log_files, bool manual_flush = false);
+  explicit Writer(std::unique_ptr<WritableFileWriter>&& dest,
+                  uint64_t log_number, bool recycle_log_files,
+                  bool manual_flush = false);
+  // No copying allowed
+  Writer(const Writer&) = delete;
+  void operator=(const Writer&) = delete;
+
   ~Writer();
 
-  Status AddRecord(const Slice& slice);
+  IOStatus AddRecord(const Slice& slice);
 
   WritableFileWriter* file() { return dest_.get(); }
   const WritableFileWriter* file() const { return dest_.get(); }
 
   uint64_t get_log_number() const { return log_number_; }
 
-  Status WriteBuffer();
+  IOStatus WriteBuffer();
+
+  IOStatus Close();
 
   bool TEST_BufferIsEmpty();
 
  private:
-  unique_ptr<WritableFileWriter> dest_;
+  std::unique_ptr<WritableFileWriter> dest_;
   size_t block_offset_;       // Current offset in block
   uint64_t log_number_;
   bool recycle_log_files_;
@@ -98,16 +104,12 @@ class Writer {
   // record type stored in the header.
   uint32_t type_crc_[kMaxRecordType + 1];
 
-  Status EmitPhysicalRecord(RecordType type, const char* ptr, size_t length);
+  IOStatus EmitPhysicalRecord(RecordType type, const char* ptr, size_t length);
 
   // If true, it does not flush after each write. Instead it relies on the upper
   // layer to manually does the flush by calling ::WriteBuffer()
   bool manual_flush_;
-
-  // No copying allowed
-  Writer(const Writer&);
-  void operator=(const Writer&);
 };
 
 }  // namespace log
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

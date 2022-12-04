@@ -7,9 +7,10 @@
 #include "utilities/table_properties_collectors/compact_on_deletion_collector.h"
 
 #include <memory>
+#include <sstream>
 #include "rocksdb/utilities/table_properties_collectors.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 CompactOnDeletionCollector::CompactOnDeletionCollector(
     size_t sliding_window_size, size_t deletion_trigger)
@@ -20,7 +21,6 @@ CompactOnDeletionCollector::CompactOnDeletionCollector(
       deletion_trigger_(deletion_trigger),
       need_compaction_(false),
       finished_(false) {
-  assert(bucket_size_ > 0U);
   memset(num_deletions_in_buckets_, 0, sizeof(size_t) * kNumBuckets);
 }
 
@@ -35,6 +35,11 @@ Status CompactOnDeletionCollector::AddUserKey(const Slice& /*key*/,
                                               SequenceNumber /*seq*/,
                                               uint64_t /*file_size*/) {
   assert(!finished_);
+  if (bucket_size_ == 0) {
+    // This collector is effectively disabled
+    return Status::OK();
+  }
+
   if (need_compaction_) {
     // If the output file already needs to be compacted, skip the check.
     return Status::OK();
@@ -71,16 +76,23 @@ TablePropertiesCollector*
 CompactOnDeletionCollectorFactory::CreateTablePropertiesCollector(
     TablePropertiesCollectorFactory::Context /*context*/) {
   return new CompactOnDeletionCollector(
-      sliding_window_size_, deletion_trigger_);
+      sliding_window_size_.load(), deletion_trigger_.load());
 }
 
-std::shared_ptr<TablePropertiesCollectorFactory>
+std::string CompactOnDeletionCollectorFactory::ToString() const {
+  std::ostringstream cfg;
+  cfg << Name() << " (Sliding window size = " << sliding_window_size_.load()
+       << " Deletion trigger = " << deletion_trigger_.load() << ')';
+  return cfg.str();
+}
+
+std::shared_ptr<CompactOnDeletionCollectorFactory>
     NewCompactOnDeletionCollectorFactory(
         size_t sliding_window_size,
         size_t deletion_trigger) {
-  return std::shared_ptr<TablePropertiesCollectorFactory>(
+  return std::shared_ptr<CompactOnDeletionCollectorFactory>(
       new CompactOnDeletionCollectorFactory(
           sliding_window_size, deletion_trigger));
 }
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 #endif  // !ROCKSDB_LITE

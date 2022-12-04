@@ -88,7 +88,7 @@ void balance(const std::shared_ptr<WalletBackend> walletBackend)
 
         const auto transactions = walletBackend->getTransactions();
 
-        for (const auto tx : transactions)
+        for (const auto &tx : transactions)
         {
             if (!tx.isFusionTransaction())
             {
@@ -323,7 +323,7 @@ void saveCSV(const std::shared_ptr<WalletBackend> walletBackend)
     /* Create CSV header */
     csv << "Timestamp,Block Height,Hash,Amount,In/Out" << std::endl;
 
-    for (const auto tx : transactions)
+    for (const auto &tx : transactions)
     {
         /* Ignore fusion transactions */
         if (tx.isFusionTransaction())
@@ -434,7 +434,7 @@ void listTransfers(const bool incoming, const bool outgoing, const std::shared_p
     /* Append them, unconfirmed transactions last */
     transactions.insert(transactions.end(), unconfirmedTransactions.begin(), unconfirmedTransactions.end());
 
-    for (const auto tx : transactions)
+    for (const auto &tx : transactions)
     {
         /* Is a fusion transaction (on a view only wallet). It appears to have
            an incoming amount, because we can't detract the outputs (can't
@@ -619,11 +619,12 @@ void getTxPrivateKey(const std::shared_ptr<WalletBackend> walletBackend)
 void setLogLevel()
 {
     const std::vector<Command> logLevels = {
-        Command("Debug", "Display all logging messages"),
-        Command("Info", "Display informational logging messages"),
-        Command("Warning", "Display messages when something may be wrong"),
-        Command("Fatal", "Display messages when something fails"),
-        Command("Disabled", "Don't display any logging messages"),
+        Command("Trace",    "Display extremely detailed logging output"),
+        Command("Debug",    "Display highly detailed logging output"),
+        Command("Info",     "Display detailed logging output"),
+        Command("Warning",  "Display only warning and error logging output"),
+        Command("Fatal",    "Display only error logging output"),
+        Command("Disabled", "Don't display any logging output"),
     };
 
     printCommands(logLevels);

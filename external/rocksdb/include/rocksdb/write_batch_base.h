@@ -10,7 +10,9 @@
 
 #include <cstddef>
 
-namespace rocksdb {
+#include "rocksdb/rocksdb_namespace.h"
+
+namespace ROCKSDB_NAMESPACE {
 
 class Slice;
 class Status;
@@ -69,7 +71,7 @@ class WriteBatchBase {
                               const SliceParts& key);
   virtual Status SingleDelete(const SliceParts& key);
 
-  // If the database contains mappings in the range ["begin_key", "end_key"],
+  // If the database contains mappings in the range ["begin_key", "end_key"),
   // erase them. Else do nothing.
   virtual Status DeleteRange(ColumnFamilyHandle* column_family,
                              const Slice& begin_key, const Slice& end_key) = 0;
@@ -122,4 +124,4 @@ class WriteBatchBase {
   virtual void SetMaxBytes(size_t max_bytes) = 0;
 };
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

@@ -8,12 +8,12 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include "file/random_access_file_reader.h"
 #include "rocksdb/slice.h"
 #include "rocksdb/status.h"
-#include "util/file_reader_writer.h"
 #include "utilities/blob_db/blob_log_format.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 namespace blob_db {
 
 class BlobDumpTool {
@@ -33,7 +33,7 @@ class BlobDumpTool {
 
  private:
   std::unique_ptr<RandomAccessFileReader> reader_;
-  std::unique_ptr<char> buffer_;
+  std::unique_ptr<char[]> buffer_;
   size_t buffer_size_;
 
   Status Read(uint64_t offset, size_t size, Slice* result);
@@ -52,6 +52,6 @@ class BlobDumpTool {
 };
 
 }  // namespace blob_db
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 
 #endif  // ROCKSDB_LITE

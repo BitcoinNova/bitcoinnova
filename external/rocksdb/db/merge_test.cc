@@ -7,6 +7,9 @@
 #include <memory>
 #include <iostream>
 
+#include "db/db_impl/db_impl.h"
+#include "db/dbformat.h"
+#include "db/write_batch_internal.h"
 #include "port/stack_trace.h"
 #include "rocksdb/cache.h"
 #include "rocksdb/comparator.h"
@@ -14,13 +17,10 @@
 #include "rocksdb/env.h"
 #include "rocksdb/merge_operator.h"
 #include "rocksdb/utilities/db_ttl.h"
-#include "db/dbformat.h"
-#include "db/db_impl.h"
-#include "db/write_batch_internal.h"
+#include "test_util/testharness.h"
 #include "utilities/merge_operators.h"
-#include "util/testharness.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 bool use_compression;
 
@@ -38,11 +38,8 @@ class CountMergeOperator : public AssociativeMergeOperator {
     mergeOperator_ = MergeOperators::CreateUInt64AddOperator();
   }
 
-  virtual bool Merge(const Slice& key,
-                     const Slice* existing_value,
-                     const Slice& value,
-                     std::string* new_value,
-                     Logger* logger) const override {
+  bool Merge(const Slice& key, const Slice* existing_value, const Slice& value,
+             std::string* new_value, Logger* logger) const override {
     assert(new_value->empty());
     ++num_merge_operator_calls;
     if (existing_value == nullptr) {
@@ -58,19 +55,17 @@ class CountMergeOperator : public AssociativeMergeOperator {
         logger);
   }
 
-  virtual bool PartialMergeMulti(const Slice& key,
-                                 const std::deque<Slice>& operand_list,
-                                 std::string* new_value,
-                                 Logger* logger) const override {
+  bool PartialMergeMulti(const Slice& key,
+                         const std::deque<Slice>& operand_list,
+                         std::string* new_value,
+                         Logger* logger) const override {
     assert(new_value->empty());
     ++num_partial_merge_calls;
     return mergeOperator_->PartialMergeMulti(key, operand_list, new_value,
                                              logger);
   }
 
-  virtual const char* Name() const override {
-    return "UInt64AddOperator";
-  }
+  const char* Name() const override { return "UInt64AddOperator"; }
 
  private:
   std::shared_ptr<MergeOperator> mergeOperator_;
@@ -230,7 +225,7 @@ class MergeBasedCounters : public Counters {
   }
 
   // mapped to a rocksdb Merge operation
-  virtual bool add(const std::string& key, uint64_t value) override {
+  bool add(const std::string& key, uint64_t value) override {
     char encoded[sizeof(uint64_t)];
     EncodeFixed64(encoded, value);
     Slice slice(encoded, sizeof(uint64_t));
@@ -246,7 +241,7 @@ class MergeBasedCounters : public Counters {
 };
 
 void dumpDb(DB* db) {
-  auto it = unique_ptr<Iterator>(db->NewIterator(ReadOptions()));
+  auto it = std::unique_ptr<Iterator>(db->NewIterator(ReadOptions()));
   for (it->SeekToFirst(); it->Valid(); it->Next()) {
     //uint64_t value = DecodeFixed64(it->value().data());
     //std::cout << it->key().ToString() << ": " << value << std::endl;
@@ -351,7 +346,7 @@ void testPartialMerge(Counters* counters, DB* db, size_t max_merge,
   // Test case 2: partial merge should not be called when a put is found.
   resetNumPartialMergeCalls();
   tmp_sum = 0;
-  db->Put(rocksdb::WriteOptions(), "c", "10");
+  db->Put(ROCKSDB_NAMESPACE::WriteOptions(), "c", "10");
   for (size_t i = 1; i <= count; i++) {
     counters->assert_add("c", i);
     tmp_sum += i;
@@ -495,15 +490,15 @@ TEST_F(MergeTest, MergeDbTtlTest) {
 }
 #endif  // !ROCKSDB_LITE
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 
 int main(int argc, char** argv) {
-  rocksdb::use_compression = false;
+  ROCKSDB_NAMESPACE::use_compression = false;
   if (argc > 1) {
-    rocksdb::use_compression = true;
+    ROCKSDB_NAMESPACE::use_compression = true;
   }
 
-  rocksdb::port::InstallStackTraceHandler();
+  ROCKSDB_NAMESPACE::port::InstallStackTraceHandler();
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
