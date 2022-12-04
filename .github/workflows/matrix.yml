@@ -1,4 +1,4 @@
-name: Build
+name: Build Bitcoin Nova
 on:
   push:
   pull_request:
