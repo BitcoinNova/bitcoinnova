@@ -295,6 +295,7 @@ namespace CryptoNote
     } // namespace parameters
 
     const char CRYPTONOTE_NAME[] = "bitcoinnova";
+    const char CRYPTONOTE_NAME_TEXT[] = "Bitcoin Nova";
 
     const uint8_t TRANSACTION_VERSION_1 = 1;
 
@@ -339,7 +340,7 @@ namespace CryptoNote
 
     // P2P Network Configuration Section - This defines our current P2P network version
     // and the minimum version for communication between nodes
-    const uint8_t P2P_CURRENT_VERSION = 6;
+    const uint8_t P2P_CURRENT_VERSION = 7;
 
     const uint8_t P2P_MINIMUM_VERSION = 6;
 
