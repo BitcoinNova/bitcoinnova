@@ -7,24 +7,13 @@
 [![GitHub All Releases](https://img.shields.io/github/downloads/BitcoinNova/bitcoinnova/total?label=Downloads)](https://github.com/BitcoinNova/bitcoinnova/releases) 
 ![Version](https://img.shields.io/github/v/release/BitcoinNova/bitcoinnova)
 
-### Contributing to Bitcoin Nova
-
-We are a community of people across the world giving our time to make this software better. There are many ways you can help or join us:
-
--   If you'd like to report a bug, [fill out a bug report](https://github.com/BitcoinNova/bitcoinnova/issues)
--   If you'd like to submit code for a bug you fixed, [submit a pull-request](https://github.com/BitcoinNova/bitcoinnova/compare)
--   If you're a beginner developer, and want a list of easy things you can accomplish to help, [click here for a list of TODOs](https://github.com/BitcoinNova/bitcoinnova/labels/GOOD%20FIRST%20ISSUE)
--   **Everyone else just click the ★ star at the top of this repository 😊 It really helps us out!**
-
-For anyone else wishing to help the community or who needs answers to questions not covered in this document, join us in our [Discord Chat](http://chat.zent.cash) here.
-
-### Zent Cash Build Branches
+## Zent Cash Build Branches
 
 #### **Master**
 
 [![Build Bitcoin Nova](https://github.com/BitcoinNova/bitcoinnova/actions/workflows/matrix.yml/badge.svg?branch=master)](https://github.com/BitcoinNova/bitcoinnova/actions/workflows/matrix.yml)
 
-## **Development**
+#### **Development**
 
 [![Build Bitcoin Nova](https://github.com/BitcoinNova/bitcoinnova/actions/workflows/matrix.yml/badge.svg?branch=development)](https://github.com/BitcoinNova/bitcoinnova/actions/workflows/matrix.yml) 
 
@@ -36,6 +25,16 @@ To use Zent Cash, you'll need a way to connect to the network, and a wallet to h
 
 To compile from sourcecode yourself, [click here for build instructions](https://github.com/BitcoinNova/bitcoinnova/blob/dev/COMPILE.md).
 
+## Contributing to Bitcoin Nova
+
+We are a community of people across the world giving our time to make this software better. There are many ways you can help or join us:
+
+-   If you'd like to report a bug, [fill out a bug report](https://github.com/BitcoinNova/bitcoinnova/issues)
+-   If you'd like to submit code for a bug you fixed, [submit a pull-request](https://github.com/BitcoinNova/bitcoinnova/compare)
+-   If you're a beginner developer, and want a list of easy things you can accomplish to help, [click here for a list of TODOs](https://github.com/BitcoinNova/bitcoinnova/labels/GOOD%20FIRST%20ISSUE)
+-   **Everyone else just click the ★ star at the top of this repository 😊 It really helps us out!**
+
+For anyone else wishing to help the community or who needs answers to questions not covered in this document, join us in our [Discord Chat](https://discord.gg/8zQf7PD) here.
 
 ### A note for contributing developers
 
