@@ -23,7 +23,7 @@ To use Zent Cash, you'll need a way to connect to the network, and a wallet to h
 
 **Click here to download: https://github.com/BitcoinNova/bitcoinnova/releases**
 
-To compile from sourcecode yourself, [click here for build instructions](https://github.com/BitcoinNova/bitcoinnova/blob/dev/COMPILE.md).
+To compile from sourcecode yourself, [click here for build instructions](https://github.com/BitcoinNova/bitcoinnova/blob/development/COMPILE.md).
 
 ## Contributing to Bitcoin Nova
 
