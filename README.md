@@ -20,9 +20,12 @@ For anyone else wishing to help the community or who needs answers to questions 
 
 ### Zent Cash Build Branches
 
-**Master**
+#### **Master**
+
 [![Build Bitcoin Nova](https://github.com/BitcoinNova/bitcoinnova/actions/workflows/matrix.yml/badge.svg?branch=master)](https://github.com/BitcoinNova/bitcoinnova/actions/workflows/matrix.yml)
-**Development**
+
+## **Development**
+
 [![Build Bitcoin Nova](https://github.com/BitcoinNova/bitcoinnova/actions/workflows/matrix.yml/badge.svg?branch=development)](https://github.com/BitcoinNova/bitcoinnova/actions/workflows/matrix.yml) 
 
 ### Installing Zent Cash
