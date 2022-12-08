@@ -7,7 +7,7 @@
 [![GitHub All Releases](https://img.shields.io/github/downloads/BitcoinNova/bitcoinnova/total?label=Downloads)](https://github.com/BitcoinNova/bitcoinnova/releases) 
 ![Version](https://img.shields.io/github/v/release/BitcoinNova/bitcoinnova)
 
-## Zent Cash Build Branches
+## Bitcoin Nova Build Branches
 
 #### **Master**
 
@@ -17,7 +17,7 @@
 
 [![Build Bitcoin Nova](https://github.com/BitcoinNova/bitcoinnova/actions/workflows/matrix.yml/badge.svg?branch=development)](https://github.com/BitcoinNova/bitcoinnova/actions/workflows/matrix.yml) 
 
-## Installing Zent Cash
+## Installing Bitcoin Nova
 
 To use Zent Cash, you'll need a way to connect to the network, and a wallet to hold your funds. This software includes those things for you, you can compile it yourself, or you can download the ones that we have compiled for you.
 
