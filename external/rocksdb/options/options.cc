@@ -9,11 +9,7 @@
 
 #include "rocksdb/options.h"
 
-#ifndef __STDC_FORMAT_MACROS
-#define __STDC_FORMAT_MACROS
-#endif
-
-#include <inttypes.h>
+#include <cinttypes>
 #include <limits>
 
 #include "monitoring/statistics.h"
@@ -31,10 +27,10 @@
 #include "rocksdb/table.h"
 #include "rocksdb/table_properties.h"
 #include "rocksdb/wal_filter.h"
-#include "table/block_based_table_factory.h"
+#include "table/block_based/block_based_table_factory.h"
 #include "util/compression.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 AdvancedColumnFamilyOptions::AdvancedColumnFamilyOptions() {
   assert(memtable_factory.get() != nullptr);
@@ -46,11 +42,14 @@ AdvancedColumnFamilyOptions::AdvancedColumnFamilyOptions(const Options& options)
           options.min_write_buffer_number_to_merge),
       max_write_buffer_number_to_maintain(
           options.max_write_buffer_number_to_maintain),
+      max_write_buffer_size_to_maintain(
+          options.max_write_buffer_size_to_maintain),
       inplace_update_support(options.inplace_update_support),
       inplace_update_num_locks(options.inplace_update_num_locks),
       inplace_callback(options.inplace_callback),
       memtable_prefix_bloom_size_ratio(
           options.memtable_prefix_bloom_size_ratio),
+      memtable_whole_key_filtering(options.memtable_whole_key_filtering),
       memtable_huge_page_size(options.memtable_huge_page_size),
       memtable_insert_with_hint_prefix_extractor(
           options.memtable_insert_with_hint_prefix_extractor),
@@ -86,7 +85,9 @@ AdvancedColumnFamilyOptions::AdvancedColumnFamilyOptions(const Options& options)
       paranoid_file_checks(options.paranoid_file_checks),
       force_consistency_checks(options.force_consistency_checks),
       report_bg_io_stats(options.report_bg_io_stats),
-      ttl(options.ttl) {
+      ttl(options.ttl),
+      periodic_compaction_seconds(options.periodic_compaction_seconds),
+      sample_for_compression(options.sample_for_compression) {
   assert(memtable_factory.get() != nullptr);
   if (max_bytes_for_level_multiplier_additional.size() <
       static_cast<unsigned int>(num_levels)) {
@@ -159,6 +160,9 @@ void ColumnFamilyOptions::Dump(Logger* log) const {
                      min_write_buffer_number_to_merge);
     ROCKS_LOG_HEADER(log, "    Options.max_write_buffer_number_to_maintain: %d",
                      max_write_buffer_number_to_maintain);
+    ROCKS_LOG_HEADER(log,
+                     "    Options.max_write_buffer_size_to_maintain: %" PRIu64,
+                     max_write_buffer_size_to_maintain);
     ROCKS_LOG_HEADER(
         log, "           Options.bottommost_compression_opts.window_bits: %d",
         bottommost_compression_opts.window_bits);
@@ -171,13 +175,18 @@ void ColumnFamilyOptions::Dump(Logger* log) const {
     ROCKS_LOG_HEADER(
         log,
         "        Options.bottommost_compression_opts.max_dict_bytes: "
-        "%" ROCKSDB_PRIszt,
+        "%" PRIu32,
         bottommost_compression_opts.max_dict_bytes);
     ROCKS_LOG_HEADER(
         log,
         "        Options.bottommost_compression_opts.zstd_max_train_bytes: "
-        "%" ROCKSDB_PRIszt,
+        "%" PRIu32,
         bottommost_compression_opts.zstd_max_train_bytes);
+    ROCKS_LOG_HEADER(
+        log,
+        "        Options.bottommost_compression_opts.parallel_threads: "
+        "%" PRIu32,
+        bottommost_compression_opts.parallel_threads);
     ROCKS_LOG_HEADER(
         log, "                 Options.bottommost_compression_opts.enabled: %s",
         bottommost_compression_opts.enabled ? "true" : "false");
@@ -189,12 +198,16 @@ void ColumnFamilyOptions::Dump(Logger* log) const {
                      compression_opts.strategy);
     ROCKS_LOG_HEADER(
         log,
-        "        Options.compression_opts.max_dict_bytes: %" ROCKSDB_PRIszt,
+        "        Options.compression_opts.max_dict_bytes: %" PRIu32,
         compression_opts.max_dict_bytes);
     ROCKS_LOG_HEADER(log,
                      "        Options.compression_opts.zstd_max_train_bytes: "
-                     "%" ROCKSDB_PRIszt,
+                     "%" PRIu32,
                      compression_opts.zstd_max_train_bytes);
+    ROCKS_LOG_HEADER(log,
+                     "        Options.compression_opts.parallel_threads: "
+                     "%" PRIu32,
+                     compression_opts.parallel_threads);
     ROCKS_LOG_HEADER(log,
                      "                 Options.compression_opts.enabled: %s",
                      compression_opts.enabled ? "true" : "false");
@@ -306,16 +319,13 @@ void ColumnFamilyOptions::Dump(Logger* log) const {
     ROCKS_LOG_HEADER(log,
                      "Options.compaction_options_fifo.allow_compaction: %d",
                      compaction_options_fifo.allow_compaction);
-    ROCKS_LOG_HEADER(log, "Options.compaction_options_fifo.ttl: %" PRIu64,
-                     compaction_options_fifo.ttl);
-    std::string collector_names;
+    std::ostringstream collector_info;
     for (const auto& collector_factory : table_properties_collector_factories) {
-      collector_names.append(collector_factory->Name());
-      collector_names.append("; ");
+      collector_info << collector_factory->ToString() << ';';
     }
     ROCKS_LOG_HEADER(
         log, "                  Options.table_properties_collectors: %s",
-        collector_names.c_str());
+        collector_info.str().c_str());
     ROCKS_LOG_HEADER(log,
                      "                  Options.inplace_update_support: %d",
                      inplace_update_support);
@@ -327,6 +337,9 @@ void ColumnFamilyOptions::Dump(Logger* log) const {
     ROCKS_LOG_HEADER(
         log, "              Options.memtable_prefix_bloom_size_ratio: %f",
         memtable_prefix_bloom_size_ratio);
+    ROCKS_LOG_HEADER(log,
+                     "              Options.memtable_whole_key_filtering: %d",
+                     memtable_whole_key_filtering);
 
     ROCKS_LOG_HEADER(log, "  Options.memtable_huge_page_size: %" ROCKSDB_PRIszt,
                      memtable_huge_page_size);
@@ -347,7 +360,11 @@ void ColumnFamilyOptions::Dump(Logger* log) const {
                      force_consistency_checks);
     ROCKS_LOG_HEADER(log, "               Options.report_bg_io_stats: %d",
                      report_bg_io_stats);
-    ROCKS_LOG_HEADER(log, "                              Options.ttl: %d", ttl);
+    ROCKS_LOG_HEADER(log, "                              Options.ttl: %" PRIu64,
+                     ttl);
+    ROCKS_LOG_HEADER(log,
+                     "         Options.periodic_compaction_seconds: %" PRIu64,
+                     periodic_compaction_seconds);
 }  // ColumnFamilyOptions::Dump
 
 void Options::Dump(Logger* log) const {
@@ -405,8 +422,11 @@ Options::PrepareForBulkLoad()
 }
 
 Options* Options::OptimizeForSmallDb() {
-  ColumnFamilyOptions::OptimizeForSmallDb();
-  DBOptions::OptimizeForSmallDb();
+  // 16MB block cache
+  std::shared_ptr<Cache> cache = NewLRUCache(16 << 20);
+
+  ColumnFamilyOptions::OptimizeForSmallDb(&cache);
+  DBOptions::OptimizeForSmallDb(&cache);
   return this;
 }
 
@@ -439,6 +459,10 @@ DBOptions* DBOptions::OldDefaults(int rocksdb_major_version,
 
 ColumnFamilyOptions* ColumnFamilyOptions::OldDefaults(
     int rocksdb_major_version, int rocksdb_minor_version) {
+  if (rocksdb_major_version < 5 ||
+      (rocksdb_major_version == 5 && rocksdb_minor_version <= 18)) {
+    compaction_pri = CompactionPri::kByCompensatedSize;
+  }
   if (rocksdb_major_version < 4 ||
       (rocksdb_major_version == 4 && rocksdb_minor_version < 7)) {
     write_buffer_size = 4 << 20;
@@ -452,38 +476,57 @@ ColumnFamilyOptions* ColumnFamilyOptions::OldDefaults(
   } else if (rocksdb_major_version == 5 && rocksdb_minor_version < 2) {
     level0_stop_writes_trigger = 30;
   }
-  compaction_pri = CompactionPri::kByCompensatedSize;
 
   return this;
 }
 
 // Optimization functions
-DBOptions* DBOptions::OptimizeForSmallDb() {
+DBOptions* DBOptions::OptimizeForSmallDb(std::shared_ptr<Cache>* cache) {
   max_file_opening_threads = 1;
   max_open_files = 5000;
+
+  // Cost memtable to block cache too.
+  std::shared_ptr<ROCKSDB_NAMESPACE::WriteBufferManager> wbm =
+      std::make_shared<ROCKSDB_NAMESPACE::WriteBufferManager>(
+          0, (cache != nullptr) ? *cache : std::shared_ptr<Cache>());
+  write_buffer_manager = wbm;
+
   return this;
 }
 
-ColumnFamilyOptions* ColumnFamilyOptions::OptimizeForSmallDb() {
+ColumnFamilyOptions* ColumnFamilyOptions::OptimizeForSmallDb(
+    std::shared_ptr<Cache>* cache) {
   write_buffer_size = 2 << 20;
   target_file_size_base = 2 * 1048576;
   max_bytes_for_level_base = 10 * 1048576;
   soft_pending_compaction_bytes_limit = 256 * 1048576;
   hard_pending_compaction_bytes_limit = 1073741824ul;
+
+  BlockBasedTableOptions table_options;
+  table_options.block_cache =
+      (cache != nullptr) ? *cache : std::shared_ptr<Cache>();
+  table_options.cache_index_and_filter_blocks = true;
+  // Two level iterator to avoid LRU cache imbalance
+  table_options.index_type =
+      BlockBasedTableOptions::IndexType::kTwoLevelIndexSearch;
+  table_factory.reset(new BlockBasedTableFactory(table_options));
+
   return this;
 }
 
 #ifndef ROCKSDB_LITE
 ColumnFamilyOptions* ColumnFamilyOptions::OptimizeForPointLookup(
     uint64_t block_cache_size_mb) {
-  prefix_extractor.reset(NewNoopTransform());
   BlockBasedTableOptions block_based_options;
-  block_based_options.index_type = BlockBasedTableOptions::kHashSearch;
+  block_based_options.data_block_index_type =
+      BlockBasedTableOptions::kDataBlockBinaryAndHash;
+  block_based_options.data_block_hash_table_util_ratio = 0.75;
   block_based_options.filter_policy.reset(NewBloomFilterPolicy(10));
   block_based_options.block_cache =
       NewLRUCache(static_cast<size_t>(block_cache_size_mb * 1024 * 1024));
   table_factory.reset(new BlockBasedTableFactory(block_based_options));
   memtable_prefix_bloom_size_ratio = 0.02;
+  memtable_whole_key_filtering = true;
   return this;
 }
 
@@ -513,7 +556,10 @@ ColumnFamilyOptions* ColumnFamilyOptions::OptimizeLevelStyleCompaction(
     if (i < 2) {
       compression_per_level[i] = kNoCompression;
     } else {
-      compression_per_level[i] = kSnappyCompression;
+      compression_per_level[i] =
+          LZ4_Supported()
+              ? kLZ4Compression
+              : (Snappy_Supported() ? kSnappyCompression : kNoCompression);
     }
   }
   return this;
@@ -554,11 +600,15 @@ ReadOptions::ReadOptions()
       tailing(false),
       managed(false),
       total_order_seek(false),
+      auto_prefix_mode(false),
       prefix_same_as_start(false),
       pin_data(false),
       background_purge_on_iterator_cleanup(false),
       ignore_range_deletions(false),
-      iter_start_seqnum(0) {}
+      iter_start_seqnum(0),
+      timestamp(nullptr),
+      iter_start_ts(nullptr),
+      deadline(std::chrono::microseconds::zero()) {}
 
 ReadOptions::ReadOptions(bool cksum, bool cache)
     : snapshot(nullptr),
@@ -572,10 +622,14 @@ ReadOptions::ReadOptions(bool cksum, bool cache)
       tailing(false),
       managed(false),
       total_order_seek(false),
+      auto_prefix_mode(false),
       prefix_same_as_start(false),
       pin_data(false),
       background_purge_on_iterator_cleanup(false),
       ignore_range_deletions(false),
-      iter_start_seqnum(0) {}
+      iter_start_seqnum(0),
+      timestamp(nullptr),
+      iter_start_ts(nullptr),
+      deadline(std::chrono::microseconds::zero()) {}
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

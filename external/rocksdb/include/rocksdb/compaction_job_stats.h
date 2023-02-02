@@ -8,7 +8,9 @@
 #include <stdint.h>
 #include <string>
 
-namespace rocksdb {
+#include "rocksdb/rocksdb_namespace.h"
+
+namespace ROCKSDB_NAMESPACE {
 struct CompactionJobStats {
   CompactionJobStats() { Reset(); }
   void Reset();
@@ -17,6 +19,9 @@ struct CompactionJobStats {
 
   // the elapsed time of this compaction in microseconds.
   uint64_t elapsed_micros;
+
+  // the elapsed CPU time of this compaction in microseconds.
+  uint64_t cpu_micros;
 
   // the number of compaction input records.
   uint64_t num_input_records;
@@ -88,4 +93,4 @@ struct CompactionJobStats {
   // number of single-deletes which meet something other than a put
   uint64_t num_single_del_mismatch;
 };
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

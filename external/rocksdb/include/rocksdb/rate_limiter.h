@@ -12,7 +12,7 @@
 #include "rocksdb/env.h"
 #include "rocksdb/statistics.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 class RateLimiter {
  public:
@@ -81,11 +81,11 @@ class RateLimiter {
   // Max bytes can be granted in a single burst
   virtual int64_t GetSingleBurstBytes() const = 0;
 
-  // Total bytes that go though rate limiter
+  // Total bytes that go through rate limiter
   virtual int64_t GetTotalBytesThrough(
       const Env::IOPriority pri = Env::IO_TOTAL) const = 0;
 
-  // Total # of requests that go though rate limiter
+  // Total # of requests that go through rate limiter
   virtual int64_t GetTotalRequests(
       const Env::IOPriority pri = Env::IO_TOTAL) const = 0;
 
@@ -136,4 +136,4 @@ extern RateLimiter* NewGenericRateLimiter(
     RateLimiter::Mode mode = RateLimiter::Mode::kWritesOnly,
     bool auto_tuned = false);
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

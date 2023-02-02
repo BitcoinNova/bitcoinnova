@@ -7,11 +7,16 @@ if (CCACHE_PROGRAM)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
 endif ()
 
-set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Choose the type of build, options are: Debug, Release, RelWithDebInfo")
+if (DEFINED CMAKE_BUILD_TYPE)
+    set (CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "Choose the type of build, options are: Debug, Release, RelWithDebInfo")
+else ()
+    set (CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: Debug, Release, RelWithDebInfo")
+endif ()
+
 set(CMAKE_CONFIGURATION_TYPES Debug RelWithDebInfo Release CACHE TYPE INTERNAL)
 set(ARCH native CACHE STRING "CPU to build for: -march value or native")
 
-project(Bitcoinnova)
+project(BitcoinNova)
 
 # Required for finding Threads on ARM
 enable_language(C)
@@ -59,7 +64,8 @@ set(NO_AES OFF CACHE BOOL "Turn off Hardware AES instructions?")
 set(NO_OPTIMIZED_MULTIPLY_ON_ARM OFF CACHE BOOL "Turn off Optimized Multiplication on ARM?")
 
 ## This section defines a few parameters that we open up for use with RocksDB
-set(WITH_LZ4 ON CACHE STRING "Enable lz4 compression")
+set(WITH_LZ4 ON)
+set(WITH_ZTD ON)
 
 message(STATUS "Building for target architecture: ${ARCH}")
 
@@ -82,10 +88,6 @@ if (NO_OPTIMIZED_MULTIPLY_ON_ARM)
     message(STATUS "OPTIMIZED_ARM_MULTIPLICATION: DISABLED")
 else ()
     message(STATUS "OPTIMIZED_ARM_MULTIPLICATION: ENABLED")
-endif ()
-
-if (WITH_LZ4)
-    add_definitions(-DENABLE_LZ4_COMPRESSION)
 endif ()
 
 # We need to set the label and import it into CMake if it exists
@@ -243,7 +245,7 @@ endif ()
 set(Boost_NO_BOOST_CMAKE ON)
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_STATIC_RUNTIME ON)
-find_package(Boost REQUIRED COMPONENTS system filesystem thread date_time chrono regex serialization)
+find_package(Boost REQUIRED COMPONENTS system thread date_time chrono serialization)
 message(STATUS "Boost Found: ${Boost_INCLUDE_DIRS}")
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 if (APPLE)
@@ -276,6 +278,14 @@ endif ()
 
 find_package(OpenSSL)
 
+if (NOT OPENSSL_FOUND)
+    find_package(PkgConfig)
+
+    if (PKG_CONFIG_FOUND)
+        pkg_search_module(OPENSSL openssl)
+    endif()
+endif()
+
 if (OPENSSL_FOUND)
     ## On non MSVC build systems, we need to link ldl with the static OpenSSL library
     if (NOT MSVC)
@@ -296,7 +306,12 @@ add_subdirectory(src)
 ## We need to setup the RocksDB build environment to match our system
 if (NOT MSVC)
     execute_process(
-            COMMAND cmake ${CMAKE_CURRENT_SOURCE_DIR}/external/rocksdb -DARCH=${ARCH} -DWITH_LZ4=${WITH_LZ4} -DWITH_GFLAGS=0 -DCMAKE_BUILD_TYPE=MinSizeRel -DWITH_TESTS=OFF -DWITH_TOOLS=OFF -DPORTABLE=ON -B${PROJECT_BINARY_DIR}/rocksdb
+         COMMAND ${CMAKE_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/external/leveldb -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DLEVELDB_BUILD_TESTS=OFF -DLEVELDB_BUILD_BENCHMARKS=OFF -DLEVELDB_INSTALL=OFF -B${PROJECT_BINARY_DIR}/leveldb
+    )
+    set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "${PROJECT_BINARY_DIR}/leveldb/libleveldb.a")
+
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/external/rocksdb -DARCH=${ARCH} -DWITH_ZSTD=ON -DWITH_LZ4=ON -DWITH_GFLAGS=0 -DCMAKE_BUILD_TYPE=MinSizeRel -DWITH_TESTS=OFF -DWITH_TOOLS=OFF -DPORTABLE=ON -B${PROJECT_BINARY_DIR}/rocksdb
     )
     set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "${PROJECT_BINARY_DIR}/rocksdb/librocksdb.a")
 endif ()

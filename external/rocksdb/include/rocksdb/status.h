@@ -14,19 +14,37 @@
 // non-const method, all threads accessing the same Status must use
 // external synchronization.
 
-#ifndef STORAGE_ROCKSDB_INCLUDE_STATUS_H_
-#define STORAGE_ROCKSDB_INCLUDE_STATUS_H_
+#pragma once
+
+#ifdef ROCKSDB_ASSERT_STATUS_CHECKED
+#include <stdio.h>
+#include <stdlib.h>
+#endif
 
 #include <string>
+
+#ifdef ROCKSDB_ASSERT_STATUS_CHECKED
+#include "port/stack_trace.h"
+#endif
+
 #include "rocksdb/slice.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 class Status {
  public:
   // Create a success status.
   Status() : code_(kOk), subcode_(kNone), sev_(kNoError), state_(nullptr) {}
-  ~Status() { delete[] state_; }
+  ~Status() {
+#ifdef ROCKSDB_ASSERT_STATUS_CHECKED
+    if (!checked_) {
+      fprintf(stderr, "Failed to check Status\n");
+      port::PrintStack();
+      abort();
+    }
+#endif  // ROCKSDB_ASSERT_STATUS_CHECKED
+    delete[] state_;
+  }
 
   // Copy the specified status.
   Status(const Status& s);
@@ -59,7 +77,9 @@ class Status {
     kBusy = 11,
     kExpired = 12,
     kTryAgain = 13,
-    kCompactionTooLarge = 14
+    kCompactionTooLarge = 14,
+    kColumnFamilyDropped = 15,
+    kMaxCode
   };
 
   Code code() const { return code_; }
@@ -74,6 +94,11 @@ class Status {
     kStaleFile = 6,
     kMemoryLimit = 7,
     kSpaceLimit = 8,
+    kPathNotFound = 9,
+    KMergeOperandsInsufficientCapacity = 10,
+    kManualCompactionPaused = 11,
+    kOverwritten = 12,
+    kTxnNotPrepared = 13,
     kMaxSubCode
   };
 
@@ -96,6 +121,12 @@ class Status {
 
   // Return a success status.
   static Status OK() { return Status(); }
+
+  // Successful, though an existing something was overwritten
+  // Note: using variants of OK status for program logic is discouraged,
+  // but it can be useful for communicating statistical information without
+  // changing public APIs.
+  static Status OkOverwritten() { return Status(kOk, kOverwritten); }
 
   // Return error status of an appropriate type.
   static Status NotFound(const Slice& msg, const Slice& msg2 = Slice()) {
@@ -184,6 +215,15 @@ class Status {
     return Status(kCompactionTooLarge, msg, msg2);
   }
 
+  static Status ColumnFamilyDropped(SubCode msg = kNone) {
+    return Status(kColumnFamilyDropped, msg);
+  }
+
+  static Status ColumnFamilyDropped(const Slice& msg,
+                                    const Slice& msg2 = Slice()) {
+    return Status(kColumnFamilyDropped, msg, msg2);
+  }
+
   static Status NoSpace() { return Status(kIOError, kNoSpace); }
   static Status NoSpace(const Slice& msg, const Slice& msg2 = Slice()) {
     return Status(kIOError, kNoSpace, msg, msg2);
@@ -199,8 +239,26 @@ class Status {
     return Status(kIOError, kSpaceLimit, msg, msg2);
   }
 
+  static Status PathNotFound() { return Status(kIOError, kPathNotFound); }
+  static Status PathNotFound(const Slice& msg, const Slice& msg2 = Slice()) {
+    return Status(kIOError, kPathNotFound, msg, msg2);
+  }
+
+  static Status TxnNotPrepared() {
+    return Status(kInvalidArgument, kTxnNotPrepared);
+  }
+  static Status TxnNotPrepared(const Slice& msg, const Slice& msg2 = Slice()) {
+    return Status(kInvalidArgument, kTxnNotPrepared, msg, msg2);
+  }
+
   // Returns true iff the status indicates success.
   bool ok() const { return code() == kOk; }
+
+  // Returns true iff the status indicates success *with* something
+  // overwritten
+  bool IsOkOverwritten() const {
+    return code() == kOk && subcode() == kOverwritten;
+  }
 
   // Returns true iff the status indicates a NotFound error.
   bool IsNotFound() const { return code() == kNotFound; }
@@ -251,6 +309,9 @@ class Status {
   // Returns true iff the status indicates the proposed compaction is too large
   bool IsCompactionTooLarge() const { return code() == kCompactionTooLarge; }
 
+  // Returns true iff the status indicates Column Family Dropped
+  bool IsColumnFamilyDropped() const { return code() == kColumnFamilyDropped; }
+
   // Returns true iff the status indicates a NoSpace error
   // This is caused by an I/O error returning the specific "out of space"
   // error condition. Stricto sensu, an NoSpace error is an I/O error
@@ -267,11 +328,30 @@ class Status {
     return (code() == kAborted) && (subcode() == kMemoryLimit);
   }
 
+  // Returns true iff the status indicates a PathNotFound error
+  // This is caused by an I/O error returning the specific "no such file or
+  // directory" error condition. A PathNotFound error is an I/O error with
+  // a specific subcode, enabling users to take appropriate action if necessary
+  bool IsPathNotFound() const {
+    return (code() == kIOError) && (subcode() == kPathNotFound);
+  }
+
+  // Returns true iff the status indicates manual compaction paused. This
+  // is caused by a call to PauseManualCompaction
+  bool IsManualCompactionPaused() const {
+    return (code() == kIncomplete) && (subcode() == kManualCompactionPaused);
+  }
+
+  // Returns true iff the status indicates a TxnNotPrepared error.
+  bool IsTxnNotPrepared() const {
+    return (code() == kInvalidArgument) && (subcode() == kTxnNotPrepared);
+  }
+
   // Return a string representation of this status suitable for printing.
   // Returns the string "OK" for success.
   std::string ToString() const;
 
- private:
+ protected:
   // A nullptr state_ (which is always the case for OK) means the message
   // is empty.
   // of the following form:
@@ -281,8 +361,6 @@ class Status {
   SubCode subcode_;
   Severity sev_;
   const char* state_;
-
-  static const char* msgs[static_cast<int>(kMaxSubCode)];
 
   explicit Status(Code _code, SubCode _subcode = kNone)
       : code_(_code), subcode_(_subcode), sev_(kNoError), state_(nullptr) {}
@@ -294,16 +372,15 @@ class Status {
   static const char* CopyState(const char* s);
 };
 
-inline Status::Status(const Status& s) : code_(s.code_), subcode_(s.subcode_), sev_(s.sev_) {
+inline Status::Status(const Status& s)
+    : code_(s.code_), subcode_(s.subcode_), sev_(s.sev_) {
   state_ = (s.state_ == nullptr) ? nullptr : CopyState(s.state_);
 }
 inline Status::Status(const Status& s, Severity sev)
-  : code_(s.code_), subcode_(s.subcode_), sev_(sev) {
+    : code_(s.code_), subcode_(s.subcode_), sev_(sev) {
   state_ = (s.state_ == nullptr) ? nullptr : CopyState(s.state_);
 }
 inline Status& Status::operator=(const Status& s) {
-  // The following condition catches both aliasing (when this == &s),
-  // and the common case where both s and *this are ok.
   if (this != &s) {
     code_ = s.code_;
     subcode_ = s.subcode_;
@@ -349,6 +426,4 @@ inline bool Status::operator!=(const Status& rhs) const {
   return !(*this == rhs);
 }
 
-}  // namespace rocksdb
-
-#endif  // STORAGE_ROCKSDB_INCLUDE_STATUS_H_
+}  // namespace ROCKSDB_NAMESPACE

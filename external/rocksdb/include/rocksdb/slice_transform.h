@@ -12,12 +12,13 @@
 // define InDomain and InRange to determine which slices are in either
 // of these sets respectively.
 
-#ifndef STORAGE_ROCKSDB_INCLUDE_SLICE_TRANSFORM_H_
-#define STORAGE_ROCKSDB_INCLUDE_SLICE_TRANSFORM_H_
+#pragma once
 
 #include <string>
 
-namespace rocksdb {
+#include "rocksdb/rocksdb_namespace.h"
+
+namespace ROCKSDB_NAMESPACE {
 
 class Slice;
 
@@ -29,7 +30,7 @@ class Slice;
  */
 class SliceTransform {
  public:
-  virtual ~SliceTransform() {};
+  virtual ~SliceTransform(){};
 
   // Return the name of this transformation.
   virtual const char* Name() const = 0;
@@ -99,6 +100,4 @@ extern const SliceTransform* NewCappedPrefixTransform(size_t cap_len);
 
 extern const SliceTransform* NewNoopTransform();
 
-}
-
-#endif  // STORAGE_ROCKSDB_INCLUDE_SLICE_TRANSFORM_H_
+}  // namespace ROCKSDB_NAMESPACE

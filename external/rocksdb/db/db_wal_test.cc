@@ -8,23 +8,34 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
 #include "db/db_test_util.h"
+#include "env/composite_env_wrapper.h"
 #include "options/options_helper.h"
 #include "port/port.h"
 #include "port/stack_trace.h"
-#include "util/fault_injection_test_env.h"
-#include "util/sync_point.h"
+#include "test_util/fault_injection_test_env.h"
+#include "test_util/sync_point.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 class DBWALTest : public DBTestBase {
  public:
   DBWALTest() : DBTestBase("/db_wal_test") {}
+
+#if defined(ROCKSDB_PLATFORM_POSIX)
+  uint64_t GetAllocatedFileSize(std::string file_name) {
+    struct stat sbuf;
+    int err = stat(file_name.c_str(), &sbuf);
+    assert(err == 0);
+    return sbuf.st_blocks * 512;
+  }
+#endif
 };
 
 // A SpecialEnv enriched to give more insight about deleted files
 class EnrichedSpecialEnv : public SpecialEnv {
  public:
   explicit EnrichedSpecialEnv(Env* base) : SpecialEnv(base) {}
-  Status NewSequentialFile(const std::string& f, unique_ptr<SequentialFile>* r,
+  Status NewSequentialFile(const std::string& f,
+                           std::unique_ptr<SequentialFile>* r,
                            const EnvOptions& soptions) override {
     InstrumentedMutexLock l(&env_mutex_);
     if (f == skipped_wal) {
@@ -79,6 +90,7 @@ class DBWALTestWithEnrichedEnv : public DBTestBase {
     enriched_env_ = new EnrichedSpecialEnv(env_->target());
     auto options = CurrentOptions();
     options.env = enriched_env_;
+    options.allow_2pc = true;
     Reopen(options);
     delete env_;
     // to be deleted by the parent class
@@ -179,15 +191,15 @@ TEST_F(DBWALTest, SyncWALNotBlockWrite) {
   ASSERT_OK(Put("foo1", "bar1"));
   ASSERT_OK(Put("foo5", "bar5"));
 
-  rocksdb::SyncPoint::GetInstance()->LoadDependency({
+  ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->LoadDependency({
       {"WritableFileWriter::SyncWithoutFlush:1",
        "DBWALTest::SyncWALNotBlockWrite:1"},
       {"DBWALTest::SyncWALNotBlockWrite:2",
        "WritableFileWriter::SyncWithoutFlush:2"},
   });
-  rocksdb::SyncPoint::GetInstance()->EnableProcessing();
+  ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->EnableProcessing();
 
-  rocksdb::port::Thread thread([&]() { ASSERT_OK(db_->SyncWAL()); });
+  ROCKSDB_NAMESPACE::port::Thread thread([&]() { ASSERT_OK(db_->SyncWAL()); });
 
   TEST_SYNC_POINT("DBWALTest::SyncWALNotBlockWrite:1");
   ASSERT_OK(Put("foo2", "bar2"));
@@ -206,20 +218,21 @@ TEST_F(DBWALTest, SyncWALNotBlockWrite) {
   ASSERT_EQ(Get("foo3"), "bar3");
   ASSERT_EQ(Get("foo4"), "bar4");
   ASSERT_EQ(Get("foo5"), "bar5");
-  rocksdb::SyncPoint::GetInstance()->DisableProcessing();
+  ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->DisableProcessing();
 }
 
 TEST_F(DBWALTest, SyncWALNotWaitWrite) {
   ASSERT_OK(Put("foo1", "bar1"));
   ASSERT_OK(Put("foo3", "bar3"));
 
-  rocksdb::SyncPoint::GetInstance()->LoadDependency({
+  ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->LoadDependency({
       {"SpecialEnv::WalFile::Append:1", "DBWALTest::SyncWALNotWaitWrite:1"},
       {"DBWALTest::SyncWALNotWaitWrite:2", "SpecialEnv::WalFile::Append:2"},
   });
-  rocksdb::SyncPoint::GetInstance()->EnableProcessing();
+  ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->EnableProcessing();
 
-  rocksdb::port::Thread thread([&]() { ASSERT_OK(Put("foo2", "bar2")); });
+  ROCKSDB_NAMESPACE::port::Thread thread(
+      [&]() { ASSERT_OK(Put("foo2", "bar2")); });
   // Moving this to SyncWAL before the actual fsync
   // TEST_SYNC_POINT("DBWALTest::SyncWALNotWaitWrite:1");
   ASSERT_OK(db_->SyncWAL());
@@ -230,7 +243,7 @@ TEST_F(DBWALTest, SyncWALNotWaitWrite) {
 
   ASSERT_EQ(Get("foo1"), "bar1");
   ASSERT_EQ(Get("foo2"), "bar2");
-  rocksdb::SyncPoint::GetInstance()->DisableProcessing();
+  ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->DisableProcessing();
 }
 
 TEST_F(DBWALTest, Recover) {
@@ -272,7 +285,31 @@ TEST_F(DBWALTest, RecoverWithTableHandle) {
     ASSERT_OK(Put(1, "bar", "v4"));
     ASSERT_OK(Flush(1));
     ASSERT_OK(Put(1, "big", std::string(100, 'a')));
-    ReopenWithColumnFamilies({"default", "pikachu"}, CurrentOptions());
+
+    options = CurrentOptions();
+    const int kSmallMaxOpenFiles = 13;
+    if (option_config_ == kDBLogDir) {
+      // Use this option to check not preloading files
+      // Set the max open files to be small enough so no preload will
+      // happen.
+      options.max_open_files = kSmallMaxOpenFiles;
+      // RocksDB sanitize max open files to at least 20. Modify it back.
+      ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->SetCallBack(
+          "SanitizeOptions::AfterChangeMaxOpenFiles", [&](void* arg) {
+            int* max_open_files = static_cast<int*>(arg);
+            *max_open_files = kSmallMaxOpenFiles;
+          });
+
+    } else if (option_config_ == kWalDirAndMmapReads) {
+      // Use this option to check always loading all files.
+      options.max_open_files = 100;
+    } else {
+      options.max_open_files = -1;
+    }
+    ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->EnableProcessing();
+    ReopenWithColumnFamilies({"default", "pikachu"}, options);
+    ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->DisableProcessing();
+    ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->ClearAllCallBacks();
 
     std::vector<std::vector<FileMetaData>> files;
     dbfull()->TEST_GetFilesMetaData(handles_[1], &files);
@@ -283,10 +320,10 @@ TEST_F(DBWALTest, RecoverWithTableHandle) {
     ASSERT_EQ(total_files, 3);
     for (const auto& level : files) {
       for (const auto& file : level) {
-        if (kInfiniteMaxOpenFiles == option_config_) {
-          ASSERT_TRUE(file.table_reader_handle != nullptr);
-        } else {
+        if (options.max_open_files == kSmallMaxOpenFiles) {
           ASSERT_TRUE(file.table_reader_handle == nullptr);
+        } else {
+          ASSERT_TRUE(file.table_reader_handle != nullptr);
         }
       }
     }
@@ -407,38 +444,38 @@ TEST_F(DBWALTest, PreallocateBlock) {
   DestroyAndReopen(options);
 
   std::atomic<int> called(0);
-  rocksdb::SyncPoint::GetInstance()->SetCallBack(
+  ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->SetCallBack(
       "DBTestWalFile.GetPreallocationStatus", [&](void* arg) {
         ASSERT_TRUE(arg != nullptr);
         size_t preallocation_size = *(static_cast<size_t*>(arg));
         ASSERT_EQ(expected_preallocation_size, preallocation_size);
         called.fetch_add(1);
       });
-  rocksdb::SyncPoint::GetInstance()->EnableProcessing();
+  ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->EnableProcessing();
   Put("", "");
   Flush();
   Put("", "");
   Close();
-  rocksdb::SyncPoint::GetInstance()->DisableProcessing();
+  ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->DisableProcessing();
   ASSERT_EQ(2, called.load());
 
   options.max_total_wal_size = 1000 * 1000;
   expected_preallocation_size = static_cast<size_t>(options.max_total_wal_size);
   Reopen(options);
   called.store(0);
-  rocksdb::SyncPoint::GetInstance()->SetCallBack(
+  ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->SetCallBack(
       "DBTestWalFile.GetPreallocationStatus", [&](void* arg) {
         ASSERT_TRUE(arg != nullptr);
         size_t preallocation_size = *(static_cast<size_t*>(arg));
         ASSERT_EQ(expected_preallocation_size, preallocation_size);
         called.fetch_add(1);
       });
-  rocksdb::SyncPoint::GetInstance()->EnableProcessing();
+  ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->EnableProcessing();
   Put("", "");
   Flush();
   Put("", "");
   Close();
-  rocksdb::SyncPoint::GetInstance()->DisableProcessing();
+  ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->DisableProcessing();
   ASSERT_EQ(2, called.load());
 
   options.db_write_buffer_size = 800 * 1000;
@@ -446,19 +483,19 @@ TEST_F(DBWALTest, PreallocateBlock) {
       static_cast<size_t>(options.db_write_buffer_size);
   Reopen(options);
   called.store(0);
-  rocksdb::SyncPoint::GetInstance()->SetCallBack(
+  ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->SetCallBack(
       "DBTestWalFile.GetPreallocationStatus", [&](void* arg) {
         ASSERT_TRUE(arg != nullptr);
         size_t preallocation_size = *(static_cast<size_t*>(arg));
         ASSERT_EQ(expected_preallocation_size, preallocation_size);
         called.fetch_add(1);
       });
-  rocksdb::SyncPoint::GetInstance()->EnableProcessing();
+  ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->EnableProcessing();
   Put("", "");
   Flush();
   Put("", "");
   Close();
-  rocksdb::SyncPoint::GetInstance()->DisableProcessing();
+  ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->DisableProcessing();
   ASSERT_EQ(2, called.load());
 
   expected_preallocation_size = 700 * 1000;
@@ -467,19 +504,19 @@ TEST_F(DBWALTest, PreallocateBlock) {
   options.write_buffer_manager = write_buffer_manager;
   Reopen(options);
   called.store(0);
-  rocksdb::SyncPoint::GetInstance()->SetCallBack(
+  ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->SetCallBack(
       "DBTestWalFile.GetPreallocationStatus", [&](void* arg) {
         ASSERT_TRUE(arg != nullptr);
         size_t preallocation_size = *(static_cast<size_t*>(arg));
         ASSERT_EQ(expected_preallocation_size, preallocation_size);
         called.fetch_add(1);
       });
-  rocksdb::SyncPoint::GetInstance()->EnableProcessing();
+  ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->EnableProcessing();
   Put("", "");
   Flush();
   Put("", "");
   Close();
-  rocksdb::SyncPoint::GetInstance()->DisableProcessing();
+  ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->DisableProcessing();
   ASSERT_EQ(2, called.load());
 }
 #endif  // !(defined NDEBUG) || !defined(OS_WIN)
@@ -521,6 +558,46 @@ TEST_F(DBWALTest, FullPurgePreservesRecycledLog) {
   }
 }
 
+TEST_F(DBWALTest, FullPurgePreservesLogPendingReuse) {
+  // Ensures full purge cannot delete a WAL while it's in the process of being
+  // recycled. In particular, we force the full purge after a file has been
+  // chosen for reuse, but before it has been renamed.
+  for (int i = 0; i < 2; ++i) {
+    Options options = CurrentOptions();
+    options.recycle_log_file_num = 1;
+    if (i != 0) {
+      options.wal_dir = alternative_wal_dir_;
+    }
+    DestroyAndReopen(options);
+
+    // The first flush creates a second log so writes can continue before the
+    // flush finishes.
+    ASSERT_OK(Put("foo", "bar"));
+    ASSERT_OK(Flush());
+
+    // The second flush can recycle the first log. Sync points enforce the
+    // full purge happens after choosing the log to recycle and before it is
+    // renamed.
+    ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->LoadDependency({
+        {"DBImpl::CreateWAL:BeforeReuseWritableFile1",
+         "DBWALTest::FullPurgePreservesLogPendingReuse:PreFullPurge"},
+        {"DBWALTest::FullPurgePreservesLogPendingReuse:PostFullPurge",
+         "DBImpl::CreateWAL:BeforeReuseWritableFile2"},
+    });
+    ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->EnableProcessing();
+    ROCKSDB_NAMESPACE::port::Thread thread([&]() {
+      TEST_SYNC_POINT(
+          "DBWALTest::FullPurgePreservesLogPendingReuse:PreFullPurge");
+      ASSERT_OK(db_->EnableFileDeletions(true));
+      TEST_SYNC_POINT(
+          "DBWALTest::FullPurgePreservesLogPendingReuse:PostFullPurge");
+    });
+    ASSERT_OK(Put("foo", "bar"));
+    ASSERT_OK(Flush());
+    thread.join();
+  }
+}
+
 TEST_F(DBWALTest, GetSortedWalFiles) {
   do {
     CreateAndReopenWithCF({"pikachu"}, CurrentOptions());
@@ -531,6 +608,56 @@ TEST_F(DBWALTest, GetSortedWalFiles) {
     ASSERT_OK(Put(1, "foo", "v1"));
     ASSERT_OK(dbfull()->GetSortedWalFiles(log_files));
     ASSERT_EQ(1, log_files.size());
+  } while (ChangeWalOptions());
+}
+
+TEST_F(DBWALTest, GetCurrentWalFile) {
+  do {
+    CreateAndReopenWithCF({"pikachu"}, CurrentOptions());
+
+    std::unique_ptr<LogFile>* bad_log_file = nullptr;
+    ASSERT_NOK(dbfull()->GetCurrentWalFile(bad_log_file));
+
+    std::unique_ptr<LogFile> log_file;
+    ASSERT_OK(dbfull()->GetCurrentWalFile(&log_file));
+
+    // nothing has been written to the log yet
+    ASSERT_EQ(log_file->StartSequence(), 0);
+    ASSERT_EQ(log_file->SizeFileBytes(), 0);
+    ASSERT_EQ(log_file->Type(), kAliveLogFile);
+    ASSERT_GT(log_file->LogNumber(), 0);
+
+    // add some data and verify that the file size actually moves foward
+    ASSERT_OK(Put(0, "foo", "v1"));
+    ASSERT_OK(Put(0, "foo2", "v2"));
+    ASSERT_OK(Put(0, "foo3", "v3"));
+
+    ASSERT_OK(dbfull()->GetCurrentWalFile(&log_file));
+
+    ASSERT_EQ(log_file->StartSequence(), 0);
+    ASSERT_GT(log_file->SizeFileBytes(), 0);
+    ASSERT_EQ(log_file->Type(), kAliveLogFile);
+    ASSERT_GT(log_file->LogNumber(), 0);
+
+    // force log files to cycle and add some more data, then check if
+    // log number moves forward
+
+    ReopenWithColumnFamilies({"default", "pikachu"}, CurrentOptions());
+    for (int i = 0; i < 10; i++) {
+      ReopenWithColumnFamilies({"default", "pikachu"}, CurrentOptions());
+    }
+
+    ASSERT_OK(Put(0, "foo4", "v4"));
+    ASSERT_OK(Put(0, "foo5", "v5"));
+    ASSERT_OK(Put(0, "foo6", "v6"));
+
+    ASSERT_OK(dbfull()->GetCurrentWalFile(&log_file));
+
+    ASSERT_EQ(log_file->StartSequence(), 0);
+    ASSERT_GT(log_file->SizeFileBytes(), 0);
+    ASSERT_EQ(log_file->Type(), kAliveLogFile);
+    ASSERT_GT(log_file->LogNumber(), 0);
+
   } while (ChangeWalOptions());
 }
 
@@ -789,21 +916,24 @@ class RecoveryTestHelper {
   // Create WAL files with values filled in
   static void FillData(DBWALTest* test, const Options& options,
                        const size_t wal_count, size_t* count) {
-    const ImmutableDBOptions db_options(options);
+    // Calling internal functions requires sanitized options.
+    Options sanitized_options = SanitizeOptions(test->dbname_, options);
+    const ImmutableDBOptions db_options(sanitized_options);
 
     *count = 0;
 
-    shared_ptr<Cache> table_cache = NewLRUCache(50, 0);
+    std::shared_ptr<Cache> table_cache = NewLRUCache(50, 0);
     EnvOptions env_options;
     WriteBufferManager write_buffer_manager(db_options.db_write_buffer_size);
 
-    unique_ptr<VersionSet> versions;
-    unique_ptr<WalManager> wal_manager;
+    std::unique_ptr<VersionSet> versions;
+    std::unique_ptr<WalManager> wal_manager;
     WriteController write_controller;
 
     versions.reset(new VersionSet(test->dbname_, &db_options, env_options,
                                   table_cache.get(), &write_buffer_manager,
-                                  &write_controller));
+                                  &write_controller,
+                                  /*block_cache_tracer=*/nullptr));
 
     wal_manager.reset(new WalManager(db_options, env_options));
 
@@ -812,10 +942,10 @@ class RecoveryTestHelper {
     for (size_t j = kWALFileOffset; j < wal_count + kWALFileOffset; j++) {
       uint64_t current_log_number = j;
       std::string fname = LogFileName(test->dbname_, current_log_number);
-      unique_ptr<WritableFile> file;
+      std::unique_ptr<WritableFile> file;
       ASSERT_OK(db_options.env->NewWritableFile(fname, &file, env_options));
-      unique_ptr<WritableFileWriter> file_writer(
-          new WritableFileWriter(std::move(file), env_options));
+      std::unique_ptr<WritableFileWriter> file_writer(new WritableFileWriter(
+          NewLegacyWritableFileWrapper(std::move(file)), fname, env_options));
       current_log_writer.reset(
           new log::Writer(std::move(file_writer), current_log_number,
                           db_options.recycle_log_file_num > 0));
@@ -1329,6 +1459,117 @@ TEST_F(DBWALTest, RecoverFromCorruptedWALWithoutFlush) {
   }
 }
 
+// Tests that total log size is recovered if we set
+// avoid_flush_during_recovery=true.
+// Flush should trigger if max_total_wal_size is reached.
+TEST_F(DBWALTest, RestoreTotalLogSizeAfterRecoverWithoutFlush) {
+  class TestFlushListener : public EventListener {
+   public:
+    std::atomic<int> count{0};
+
+    TestFlushListener() = default;
+
+    void OnFlushBegin(DB* /*db*/, const FlushJobInfo& flush_job_info) override {
+      count++;
+      assert(FlushReason::kWriteBufferManager == flush_job_info.flush_reason);
+    }
+  };
+  std::shared_ptr<TestFlushListener> test_listener =
+      std::make_shared<TestFlushListener>();
+
+  constexpr size_t kKB = 1024;
+  constexpr size_t kMB = 1024 * 1024;
+  Options options = CurrentOptions();
+  options.avoid_flush_during_recovery = true;
+  options.max_total_wal_size = 1 * kMB;
+  options.listeners.push_back(test_listener);
+  // Have to open DB in multi-CF mode to trigger flush when
+  // max_total_wal_size is reached.
+  CreateAndReopenWithCF({"one"}, options);
+  // Write some keys and we will end up with one log file which is slightly
+  // smaller than 1MB.
+  std::string value_100k(100 * kKB, 'v');
+  std::string value_300k(300 * kKB, 'v');
+  ASSERT_OK(Put(0, "foo", "v1"));
+  for (int i = 0; i < 9; i++) {
+    ASSERT_OK(Put(1, "key" + ToString(i), value_100k));
+  }
+  // Get log files before reopen.
+  VectorLogPtr log_files_before;
+  ASSERT_OK(dbfull()->GetSortedWalFiles(log_files_before));
+  ASSERT_EQ(1, log_files_before.size());
+  uint64_t log_size_before = log_files_before[0]->SizeFileBytes();
+  ASSERT_GT(log_size_before, 900 * kKB);
+  ASSERT_LT(log_size_before, 1 * kMB);
+  ReopenWithColumnFamilies({"default", "one"}, options);
+  // Write one more value to make log larger than 1MB.
+  ASSERT_OK(Put(1, "bar", value_300k));
+  // Get log files again. A new log file will be opened.
+  VectorLogPtr log_files_after_reopen;
+  ASSERT_OK(dbfull()->GetSortedWalFiles(log_files_after_reopen));
+  ASSERT_EQ(2, log_files_after_reopen.size());
+  ASSERT_EQ(log_files_before[0]->LogNumber(),
+            log_files_after_reopen[0]->LogNumber());
+  ASSERT_GT(log_files_after_reopen[0]->SizeFileBytes() +
+                log_files_after_reopen[1]->SizeFileBytes(),
+            1 * kMB);
+  // Write one more key to trigger flush.
+  ASSERT_OK(Put(0, "foo", "v2"));
+  dbfull()->TEST_WaitForFlushMemTable();
+  // Flushed two column families.
+  ASSERT_EQ(2, test_listener->count.load());
+}
+
+#if defined(ROCKSDB_PLATFORM_POSIX)
+#if defined(ROCKSDB_FALLOCATE_PRESENT)
+// Tests that we will truncate the preallocated space of the last log from
+// previous.
+TEST_F(DBWALTest, TruncateLastLogAfterRecoverWithoutFlush) {
+  constexpr size_t kKB = 1024;
+  Options options = CurrentOptions();
+  options.avoid_flush_during_recovery = true;
+  // Test fallocate support of running file system.
+  // Skip this test if fallocate is not supported.
+  std::string fname_test_fallocate = dbname_ + "/preallocate_testfile";
+  int fd = -1;
+  do {
+    fd = open(fname_test_fallocate.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0644);
+  } while (fd < 0 && errno == EINTR);
+  ASSERT_GT(fd, 0);
+  int alloc_status = fallocate(fd, 0, 0, 1);
+  int err_number = errno;
+  close(fd);
+  ASSERT_OK(options.env->DeleteFile(fname_test_fallocate));
+  if (err_number == ENOSYS || err_number == EOPNOTSUPP) {
+    fprintf(stderr, "Skipped preallocated space check: %s\n", strerror(err_number));
+    return;
+  }
+  ASSERT_EQ(0, alloc_status);
+
+  DestroyAndReopen(options);
+  size_t preallocated_size =
+      dbfull()->TEST_GetWalPreallocateBlockSize(options.write_buffer_size);
+  ASSERT_OK(Put("foo", "v1"));
+  VectorLogPtr log_files_before;
+  ASSERT_OK(dbfull()->GetSortedWalFiles(log_files_before));
+  ASSERT_EQ(1, log_files_before.size());
+  auto& file_before = log_files_before[0];
+  ASSERT_LT(file_before->SizeFileBytes(), 1 * kKB);
+  // The log file has preallocated space.
+  ASSERT_GE(GetAllocatedFileSize(dbname_ + file_before->PathName()),
+            preallocated_size);
+  Reopen(options);
+  VectorLogPtr log_files_after;
+  ASSERT_OK(dbfull()->GetSortedWalFiles(log_files_after));
+  ASSERT_EQ(1, log_files_after.size());
+  ASSERT_LT(log_files_after[0]->SizeFileBytes(), 1 * kKB);
+  // The preallocated space should be truncated.
+  ASSERT_LT(GetAllocatedFileSize(dbname_ + file_before->PathName()),
+            preallocated_size);
+}
+#endif  // ROCKSDB_FALLOCATE_PRESENT
+#endif  // ROCKSDB_PLATFORM_POSIX
+
 #endif  // ROCKSDB_LITE
 
 TEST_F(DBWALTest, WalTermTest) {
@@ -1354,10 +1595,10 @@ TEST_F(DBWALTest, WalTermTest) {
   ASSERT_EQ("bar", Get(1, "foo"));
   ASSERT_EQ("NOT_FOUND", Get(1, "foo2"));
 }
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 
 int main(int argc, char** argv) {
-  rocksdb::port::InstallStackTraceHandler();
+  ROCKSDB_NAMESPACE::port::InstallStackTraceHandler();
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

@@ -4,10 +4,10 @@
 //  (found in the LICENSE.Apache file in the root directory).
 
 #include "table/persistent_cache_helper.h"
-#include "table/block_based_table_reader.h"
+#include "table/block_based/block_based_table_reader.h"
 #include "table/format.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 void PersistentCacheHelper::InsertRawPage(
     const PersistentCacheOptions& cache_options, const BlockHandle& handle,
@@ -29,12 +29,9 @@ void PersistentCacheHelper::InsertUncompressedPage(
     const BlockContents& contents) {
   assert(cache_options.persistent_cache);
   assert(!cache_options.persistent_cache->IsCompressed());
-  if (!contents.cachable || contents.compression_type != kNoCompression) {
-    // We shouldn't cache this. Either
-    // (1) content is not cacheable
-    // (2) content is compressed
-    return;
-  }
+  // Precondition:
+  // (1) content is cacheable
+  // (2) content is not compressed
 
   // construct the page key
   char cache_key[BlockBasedTable::kMaxCacheKeyPrefixSize + kMaxVarint64Length];
@@ -109,9 +106,8 @@ Status PersistentCacheHelper::LookupUncompressedPage(
   // update stats
   RecordTick(cache_options.statistics, PERSISTENT_CACHE_HIT);
   // construct result and return
-  *contents =
-      BlockContents(std::move(data), size, false /*cacheable*/, kNoCompression);
+  *contents = BlockContents(std::move(data), size);
   return Status::OK();
 }
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

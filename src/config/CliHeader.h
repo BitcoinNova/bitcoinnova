@@ -1,4 +1,4 @@
-// Copyright (c) 2018, The TurtleCoin Developers
+// Copyright (c) 2018-2023, The Bitcoin Nova Developers
 //
 // Please see the included LICENSE file for more information.
 
@@ -17,7 +17,7 @@ namespace CryptoNote
         programHeader
             << std::endl
             << asciiArt << std::endl
-            << " " << CryptoNote::CRYPTONOTE_NAME << " v" << PROJECT_VERSION_LONG << std::endl
+            << " " << CryptoNote::CRYPTONOTE_NAME_TEXT << " v" << PROJECT_VERSION_LONG << std::endl
             << " This software is distributed under the General Public License v3.0" << std::endl
             << std::endl
             << " " << PROJECT_COPYRIGHT << std::endl

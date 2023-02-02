@@ -1,180 +1,52 @@
 ![image](https://github.com/BitcoinNova/brand/blob/master/logo/wordmark/bitcoinnova_wordmark_ubuntu.png)
+#### Bitcoin Nova is a private, fast, and easy way to send money to friends and businesses.
 
 [![Discord](https://img.shields.io/discord/428851188817985547?label=Bitcoin%20Nova%20[BTN])](https://discord.gg/8zQf7PD) 
-[![GitHub All Releases](https://img.shields.io/github/downloads/BitcoinNova/bitcoinnova/total?label=Downloads)](http://latest.bitcoinnova.org) 
+[![GitHub issues](https://img.shields.io/github/issues/BitcoinNova/bitcoinnova?label=Issues)](https://github.com/BitcoinNova/bitcoinnova/issues)
 [![GitHub contributors](https://img.shields.io/github/contributors-anon/BitcoinNova/bitcoinnova?label=Contributors)](https://github.com/BitcoinNova/bitcoinnova/graphs/contributors) 
-[![GitHub issues](https://img.shields.io/github/issues/BitcoinNova/bitcoinnova?label=Issues)](https://github.com/BitcoinNova/bitcoinnova/issues) 
+[![GitHub All Releases](https://img.shields.io/github/downloads/BitcoinNova/bitcoinnova/total?label=Downloads)](https://github.com/BitcoinNova/bitcoinnova/releases) 
 ![Version](https://img.shields.io/github/v/release/BitcoinNova/bitcoinnova)
 
-#### Master Build Status
-[![Build Status](https://travis-ci.org/BitcoinNova/bitcoinnova.svg?branch=master)](https://travis-ci.org/BitcoinNova/bitcoinnova) [![Build status](https://ci.appveyor.com/api/projects/status/0lcblve16aqbl006?svg=true)](https://ci.appveyor.com/project/BitcoinNovaProject/bitcoinnova)
+## Bitcoin Nova Build Branches
 
-### Installing
+#### **Master**
 
-We offer binary images of the latest releases here: [http://latest.bitcoinnova.org](https://github.com/BitcoinNova/bitcoinnova/releases/)
-If you would like to compile yourself, read on.
+[![Build Bitcoin Nova](https://github.com/BitcoinNova/bitcoinnova/actions/workflows/matrix.yml/badge.svg?branch=master)](https://github.com/BitcoinNova/bitcoinnova/actions/workflows/matrix.yml)
 
-### How To Compile
+#### **Development**
 
-#### Linux
+[![Build Bitcoin Nova](https://github.com/BitcoinNova/bitcoinnova/actions/workflows/matrix.yml/badge.svg?branch=development)](https://github.com/BitcoinNova/bitcoinnova/actions/workflows/matrix.yml) 
 
-##### Prerequisites
+## Installing Bitcoin Nova
 
-You will need the following packages: [Boost](https://www.boost.org/), [OpenSSL](https://www.openssl.org/), cmake (3.8 or higher), make, and git.
+To use Zent Cash, you'll need a way to connect to the network, and a wallet to hold your funds. This software includes those things for you, you can compile it yourself, or you can download the ones that we have compiled for you.
 
-You will also need either GCC/G++, or Clang.
+**Click here to download: https://github.com/BitcoinNova/bitcoinnova/releases**
 
-If you are using GCC, you will need GCC-7.0 or higher.
+To compile from sourcecode yourself, [click here for build instructions](https://github.com/BitcoinNova/bitcoinnova/blob/development/COMPILE.md).
 
-If you are using Clang, you will need Clang 6.0 or higher. You will also need libstdc++\-6.0 or higher.
+## Contributing to Bitcoin Nova
 
-##### Ubuntu, using GCC
+We are a community of people across the world giving our time to make this software better. There are many ways you can help or join us:
 
-- `sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y`
-- `sudo apt-get update`
-- `sudo apt-get install aptitude -y`
-- `sudo aptitude install -y build-essential g++-8 gcc-8 git libboost-all-dev python-pip libssl-dev`
-- `sudo pip install cmake`
-- `export CC=gcc-8`
-- `export CXX=g++-8`
-- `git clone -b master --single-branch https://github.com/BitcoinNova/bitcoinnova`
-- `cd bitcoinnova`
-- `mkdir build`
-- `cd build`
-- `cmake ..`
-- `make`
+-   If you'd like to report a bug, [fill out a bug report](https://github.com/BitcoinNova/bitcoinnova/issues)
+-   If you'd like to submit code for a bug you fixed, [submit a pull-request](https://github.com/BitcoinNova/bitcoinnova/compare)
+-   If you're a beginner developer, and want a list of easy things you can accomplish to help, [click here for a list of TODOs](https://github.com/BitcoinNova/bitcoinnova/labels/GOOD%20FIRST%20ISSUE)
+-   **Everyone else just click the ★ star at the top of this repository 😊 It really helps us out!**
 
-The binaries will be in the `src` folder when you are complete.
+For anyone else wishing to help the community or who needs answers to questions not covered in this document, join us in our [Discord Chat](https://discord.gg/8zQf7PD) here.
 
-- `cd src`
-- `./Bitcoinnovad --version`
+### A note for contributing developers
 
-##### Ubuntu, using Clang
+Hello, and thank you for helping us! Our work makes use of many brilliant projects from other communities who contributed their code which helped us get to where we are now. To make sure we're always doing things the right way, we try to make sure we get the proper license header in every file we modify. By the terms of this project's license, any open source project may use our software, but the licenses may only be appended to, not altered. 
 
-- `sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y`
-- `wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -`
-
-You need to modify the below command for your version of ubuntu - see https://apt.llvm.org/
-
-* Ubuntu 14.04 (Trusty)
-- `sudo add-apt-repository "deb https://apt.llvm.org/trusty/ llvm-toolchain-trusty 6.0 main"`
-
-* Ubuntu 16.04 (Xenial)
-- `sudo add-apt-repository "deb https://apt.llvm.org/xenial/ llvm-toolchain-xenial 6.0 main"`
-
-* Ubuntu 18.04 (Bionic)
-- `sudo add-apt-repository "deb https://apt.llvm.org/bionic/ llvm-toolchain-bionic 6.0 main"`
-
-- `sudo apt-get update`
-- `sudo apt-get install aptitude -y`
-- `sudo aptitude install -y -o Aptitude::ProblemResolver::SolutionCost='100*canceled-actions,200*removals' build-essential clang-6.0 libstdc++-7-dev git libboost-all-dev python-pip libssl-dev`
-- `sudo pip install cmake`
-- `export CC=clang-6.0`
-- `export CXX=clang++-6.0`
-- `git clone -b master --single-branch https://github.com/BitcoinNova/bitcoinnova`
-- `cd bitcoinnova`
-- `mkdir build`
-- `cd build`
-- `cmake ..`
-- `make`
-
-The binaries will be in the `src` folder when you are complete.
-
-- `cd src`
-- `./Bitcoinnovad --version`
-
-##### Generic Linux
-
-Ensure you have the dependencies listed above.
-
-If you want to use clang, ensure you set the environment variables `CC` and `CXX`.
-See the ubuntu instructions for an example.
-
-- `git clone -b master --single-branch https://github.com/BitcoinNova/bitcoinnova`
-- `cd bitcoinnova`
-- `mkdir build`
-- `cd build`
-- `cmake ..`
-- `make`
-
-The binaries will be in the `src` folder when you are complete.
-
-- `cd src`
-- `./Bitcoinnovad --version`
-
-#### OSX/Apple, using Clang
-
-##### Prerequisites
-
-- Install XCode and Developer Tools.
-
-##### Building
-
-- `which brew || /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"`
-- `brew install --force cmake boost llvm openssl`
-- `export CC=/usr/local/opt/llvm/bin/clang`
-- `export CXX=/usr/local/opt/llvm/bin/clang++`
-- `git clone -b master --single-branch https://github.com/BitcoinNova/bitcoinnova`
-- `cd bitcoinnova`
-- `mkdir build`
-- `cd build`
-- `cmake ..`
-- `make`
-
-The binaries will be in the `src` folder when you are complete.
-
-- `cd src`
-- `./Bitcoinnovad --version`
-
-#### Windows
-
-##### Prerequisites
-
-You can build for 32-bit or 64-bit Windows. **If you're not sure, pick 64-bit.**
-
-- Download the [Build Tools for Visual Studio 2019](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=BuildTools&rel=16) Installer
-- When it opens up select **C++ build tools**, it automatically selects the needed parts
-- Install Boost (1.69 works the latest is 1.70 and doesn't work). Select the appropriate version for your system:
-  - [Boost 64-bit](https://bintray.com/boostorg/release/download_file?file_path=1.69.0%2Fbinaries%2Fboost_1_69_0-msvc-14.1-64.exe)
-  - [Boost 32-bit](https://bintray.com/boostorg/release/download_file?file_path=1.69.0%2Fbinaries%2Fboost_1_69_0-msvc-14.1-32.exe)
-- Install the latest full version of OpenSSL (currently OpenSSL 1.1.1c). Select the appropriate version for your system:
-  - [OpenSSL 64-bit](https://slproweb.com/download/Win64OpenSSL-1_1_1c.exe)
-  - [OpenSSL 32-bit](https://slproweb.com/download/Win32OpenSSL-1_1_1c.exe)
-
-##### Building
-
-For 64-bit:
-- From the start menu, open 'x64 Native Tools Command Prompt for VS 2019'.
-- `cd <your_bitcoinnova_directory>`
-- `mkdir build`
-- `cd build`
-- `cmake -G "Visual Studio 16 2019" -A x64 .. -DBOOST_ROOT=C:/local/boost_1_69_0`
-- `MSBuild Bitcoinnova.sln /p:Configuration=Release /m` or `MSBuild src\cli.vcxproj /p:Configuration=Release /m`
-
-For 32-bit:
-- From the start menu, open 'x86 Native Tools Command Prompt for VS 2019'.
-- `cd <your_bitcoinnova_directory>`
-- `mkdir build`
-- `cd build`
-- `cmake -G "Visual Studio 16 2019" -A Win32 .. -DBOOST_ROOT=C:/local/boost_1_69_0`
-- `MSBuild Bitcoinnova.sln /p:Configuration=Release /p:Platform=Win32 /m` 
-
-The binaries will be in the `src/Release` folder when you are complete.
-
-- `cd src`
-- `cd Release`
-- `Bitcoinnovad.exe --version`
-
-#### Thanks
-Cryptonote Developers, Bytecoin Developers, Monero Developers, Forknote Project, TurtleCoin Community, The Bitcoin Nova Developers.
-
-### Copypasta for license when editing files
+See [src/config/CryptoNoteConfig.h](https://github.com/BitcoinNova/bitcoinnova/blob/10172129c1111bf0c6e0cc7a7b878438fa946e29/src/config/CryptoNoteConfig.h#L4) for an example.
 
 ```
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2018, The Monero Project
-// Copyright (c) 2018-2019, The TurtleCoin Developers
-// Copyright (c) 2018-2020, The Bitcoin Nova Developers
+// Copyright (c) 2018-2020, The TurtleCoin Developers
+// Copyright (c) 2018-2023, The Bitcoin Nova Developers
 //
 // Please see the included LICENSE file for more information.
 ```

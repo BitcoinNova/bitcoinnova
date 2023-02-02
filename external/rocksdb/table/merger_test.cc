@@ -7,10 +7,10 @@
 #include <string>
 
 #include "table/merging_iterator.h"
-#include "util/testharness.h"
-#include "util/testutil.h"
+#include "test_util/testharness.h"
+#include "test_util/testutil.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 class MergerTest : public testing::Test {
  public:
@@ -19,7 +19,7 @@ class MergerTest : public testing::Test {
         rnd_(3),
         merging_iterator_(nullptr),
         single_iterator_(nullptr) {}
-  ~MergerTest() = default;
+  ~MergerTest() override = default;
   std::vector<std::string> GenerateStrings(size_t len, int string_len) {
     std::vector<std::string> ret;
 
@@ -172,7 +172,7 @@ TEST_F(MergerTest, SeekToLastTest) {
   }
 }
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);

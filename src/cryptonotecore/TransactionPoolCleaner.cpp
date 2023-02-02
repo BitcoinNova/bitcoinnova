@@ -42,9 +42,19 @@ namespace CryptoNote
         return transactionPool->getTransaction(hash);
     }
 
+    const std::optional<CachedTransaction> TransactionPoolCleanWrapper::tryGetTransaction(const Crypto::Hash &hash) const
+    {
+        return transactionPool->tryGetTransaction(hash);
+    }
+
     bool TransactionPoolCleanWrapper::removeTransaction(const Crypto::Hash &hash)
     {
         return transactionPool->removeTransaction(hash);
+    }
+
+    size_t TransactionPoolCleanWrapper::getFusionTransactionCount() const
+    {
+        return transactionPool->getFusionTransactionCount();
     }
 
     size_t TransactionPoolCleanWrapper::getTransactionCount() const
@@ -87,6 +97,11 @@ namespace CryptoNote
         TransactionPoolCleanWrapper::getTransactionHashesByPaymentId(const Crypto::Hash &paymentId) const
     {
         return transactionPool->getTransactionHashesByPaymentId(paymentId);
+    }
+
+    void TransactionPoolCleanWrapper::flush()
+    {
+        return transactionPool->flush();
     }
 
     std::vector<Crypto::Hash> TransactionPoolCleanWrapper::clean(const uint32_t height)

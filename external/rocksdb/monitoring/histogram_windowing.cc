@@ -13,11 +13,11 @@
 
 #include <algorithm>
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 HistogramWindowingImpl::HistogramWindowingImpl() {
   env_ = Env::Default();
-  window_stats_.reset(new HistogramStat[num_windows_]);
+  window_stats_.reset(new HistogramStat[static_cast<size_t>(num_windows_)]);
   Clear();
 }
 
@@ -29,7 +29,7 @@ HistogramWindowingImpl::HistogramWindowingImpl(
       micros_per_window_(micros_per_window),
       min_num_per_window_(min_num_per_window) {
   env_ = Env::Default();
-  window_stats_.reset(new HistogramStat[num_windows_]);
+  window_stats_.reset(new HistogramStat[static_cast<size_t>(num_windows_)]);
   Clear();
 }
 
@@ -65,9 +65,7 @@ void HistogramWindowingImpl::Add(uint64_t value){
 
 void HistogramWindowingImpl::Merge(const Histogram& other) {
   if (strcmp(Name(), other.Name()) == 0) {
-    Merge(
-        *static_cast_with_check<const HistogramWindowingImpl, const Histogram>(
-            &other));
+    Merge(*static_cast_with_check<const HistogramWindowingImpl>(&other));
   }
 }
 
@@ -199,4 +197,4 @@ void HistogramWindowingImpl::SwapHistoryBucket() {
   }
 }
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

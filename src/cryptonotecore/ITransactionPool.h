@@ -20,7 +20,11 @@ namespace CryptoNote
 
         virtual const CachedTransaction &getTransaction(const Crypto::Hash &hash) const = 0;
 
+        virtual const std::optional<CachedTransaction> tryGetTransaction(const Crypto::Hash &hash) const = 0;
+
         virtual bool removeTransaction(const Crypto::Hash &hash) = 0;
+
+        virtual size_t getFusionTransactionCount() const = 0;
 
         virtual size_t getTransactionCount() const = 0;
 
@@ -38,6 +42,8 @@ namespace CryptoNote
         virtual uint64_t getTransactionReceiveTime(const Crypto::Hash &hash) const = 0;
 
         virtual std::vector<Crypto::Hash> getTransactionHashesByPaymentId(const Crypto::Hash &paymentId) const = 0;
+
+        virtual void flush() = 0;
     };
 
 } // namespace CryptoNote

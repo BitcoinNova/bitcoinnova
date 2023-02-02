@@ -12,7 +12,7 @@
 // A thread local context for gathering io-stats efficiently and transparently.
 // Use SetPerfLevel(PerfLevel::kEnableTime) to enable time stats.
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 struct IOStatsContext {
   // reset all io-stats counter to zero
@@ -44,9 +44,13 @@ struct IOStatsContext {
   uint64_t prepare_write_nanos;
   // time spent in Logger::Logv().
   uint64_t logger_nanos;
+  // CPU time spent in write() and pwrite()
+  uint64_t cpu_write_nanos;
+  // CPU time spent in read() and pread()
+  uint64_t cpu_read_nanos;
 };
 
 // Get Thread-local IOStatsContext object pointer
 IOStatsContext* get_iostats_context();
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

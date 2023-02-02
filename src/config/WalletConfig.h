@@ -1,4 +1,4 @@
-// Copyright (c) 2018, The TurtleCoin Developers
+// Copyright (c) 2018-2023, The Bitcoin Nova Developers
 //
 // Please see the included LICENSE file for more information.
 
@@ -23,14 +23,14 @@ namespace WalletConfig
     const std::string addressBookFilename = ".addressBook.json";
 
     /* The name of your deamon */
-    const std::string daemonName = "Bitcoinnovad";
+    const std::string daemonName = "bitcoinnovad";
 
     /* The name to call this wallet */
-    const std::string walletName = "zedwallet";
+    const std::string walletName = "bitcoinnova-wallet";
 
     /* The name of service/walletd, the programmatic rpc interface to a
        wallet */
-    const std::string walletdName = "Bitcoinnova-service";
+    const std::string walletdName = "bitcoinnova-service";
 
     /* The full name of your crypto */
     const std::string coinName = std::string(CryptoNote::CRYPTONOTE_NAME);

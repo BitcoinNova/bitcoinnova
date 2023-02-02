@@ -81,22 +81,19 @@ namespace DaemonConfig
             "no-console",
             "Disable daemon console commands",
             cxxopts::value<bool>()->default_value("false")->implicit_value("true"))(
-            "rocksdb",
-            "Use Rocksdb for local cache files",
-            cxxopts::value<bool>(config.useRocksdbForLocalCaches)->default_value("false")->implicit_value("true"))(
-            "save-config", "Save the configuration to the specified <file>", cxxopts::value<std::string>(), "<file>")(
-            "sqlite",
-            "Use SQLite3 for local cache files",
-            cxxopts::value<bool>(config.useSqliteForLocalCaches)->default_value("false")->implicit_value("true"));
+            "save-config", "Save the configuration to the specified <file>", cxxopts::value<std::string>(), "<file>");
 
         options.add_options("RPC")(
             "enable-blockexplorer",
             "Enable the Blockchain Explorer RPC",
             cxxopts::value<bool>()->default_value("false")->implicit_value("true"))(
+            "enable-blockexplorer-detailed",
+            "Enable the Blockchain Explorer Detailed RPC",
+            cxxopts::value<bool>()->default_value("false")->implicit_value("true"))(
             "enable-cors",
             "Adds header 'Access-Control-Allow-Origin' to the RPC responses using the <domain>. Uses the value "
             "specified as the domain. Use * for all.",
-            cxxopts::value<std::vector<std::string>>(),
+            cxxopts::value<std::string>(),
             "<domain>")(
             "fee-address",
             "Sets the convenience charge <address> for light wallets that use the daemon",
@@ -156,28 +153,54 @@ namespace DaemonConfig
             cxxopts::value<std::vector<std::string>>(),
             "<ip:port>");
 
+        const std::string maxOpenFiles = 
+            "(default: " + std::to_string(CryptoNote::ROCKSDB_MAX_OPEN_FILES) 
+            + " (ROCKSDB), " + std::to_string(CryptoNote::LEVELDB_MAX_OPEN_FILES)
+            + " (LEVELDB))";
+
+        const std::string readCache = 
+            "(default: " + std::to_string(CryptoNote::ROCKSDB_READ_BUFFER_MB) 
+            + " (ROCKSDB), " + std::to_string(CryptoNote::LEVELDB_READ_BUFFER_MB)
+            + " (LEVELDB))";
+
+        const std::string writeBuffer = 
+            "(default: " + std::to_string(CryptoNote::ROCKSDB_WRITE_BUFFER_MB) 
+            + " (ROCKSDB), " + std::to_string(CryptoNote::LEVELDB_WRITE_BUFFER_MB)
+            + " (LEVELDB))";
+
         options.add_options("Database")
-#ifdef ENABLE_LZ4_COMPRESSION
+            ("db-enable-level-db",
+             "Use LevelDB instead of RocksDB",
+             cxxopts::value<bool>()->default_value("false")->implicit_value("true"))
             ("db-enable-compression",
              "Enable database compression",
-             cxxopts::value<bool>(config.enableDbCompression)->default_value("false")->implicit_value("true"))
-#endif
-                ("db-max-open-files",
-                 "Number of files that can be used by the database at one time",
-                 cxxopts::value<int>()->default_value(std::to_string(config.dbMaxOpenFiles)),
-                 "#")(
-                    "db-read-buffer-size",
-                    "Size of the database read cache in megabytes (MB)",
-                    cxxopts::value<int>()->default_value(std::to_string(config.dbReadCacheSizeMB)),
-                    "#")(
-                    "db-threads",
-                    "Number of background threads used for compaction and flush operations",
-                    cxxopts::value<int>()->default_value(std::to_string(config.dbThreads)),
-                    "#")(
-                    "db-write-buffer-size",
-                    "Size of the database write buffer in megabytes (MB)",
-                    cxxopts::value<int>()->default_value(std::to_string(config.dbWriteBufferSizeMB)),
-                    "#");
+             cxxopts::value<bool>()->default_value("false")->implicit_value("true"))
+            ("db-max-open-files",
+             "Number of files that can be used by the database at one time " + maxOpenFiles,
+             cxxopts::value<int>(),
+             "#")
+            ("db-read-buffer-size",
+             "Size of the database read cache in megabytes (MB) " + readCache,
+             cxxopts::value<int>(),
+             "#")
+            ("db-threads",
+             "Number of background threads used for compaction and flush operations (RocksDB only)",
+             cxxopts::value<int>()->default_value(std::to_string(CryptoNote::ROCKSDB_BACKGROUND_THREADS)),
+             "#")
+            ("db-write-buffer-size",
+             "Size of the database write buffer in megabytes (MB) " + writeBuffer,
+             cxxopts::value<int>(),
+             "#")
+            ("db-max-file-size",
+             "Max file size of database files in megabytes (MB) (LevelDB only)",
+             cxxopts::value<int>()->default_value(std::to_string(CryptoNote::LEVELDB_MAX_FILE_SIZE_MB)),
+             "#");
+
+        options.add_options("Syncing")(
+            "transaction-validation-threads",
+            "Number of threads to use to validate a transaction's inputs in parallel",
+            cxxopts::value<uint32_t>()->default_value(std::to_string(config.transactionValidationThreads)),
+            "#");
 
         try
         {
@@ -255,26 +278,32 @@ namespace DaemonConfig
                 config.logLevel = cli["log-level"].as<int>();
             }
 
-            if (cli.count("sqlite") > 0)
-            {
-                config.useSqliteForLocalCaches = cli["sqlite"].as<bool>();
-            }
-
-            if (cli.count("rocksdb") > 0)
-            {
-                config.useRocksdbForLocalCaches = cli["rocksdb"].as<bool>();
-            }
-
-#ifdef ENABLE_LZ4_COMPRESSION
             if (cli.count("db-enable-compression") > 0)
             {
                 config.enableDbCompression = cli["db-enable-compression"].as<bool>();
             }
-#endif
 
             if (cli.count("no-console") > 0)
             {
                 config.noConsole = cli["no-console"].as<bool>();
+            }
+
+            /* Using levelDB, lets set the level DB defaults. Will overwrite with
+             * passed in values later if present. */
+            if (cli.count("db-enable-level-db") > 0 && cli["db-enable-level-db"].as<bool>())
+            {
+                config.enableLevelDB = true;
+                config.dbMaxOpenFiles = CryptoNote::LEVELDB_MAX_OPEN_FILES;
+                config.dbReadCacheSizeMB = CryptoNote::LEVELDB_READ_BUFFER_MB;
+                config.dbWriteBufferSizeMB = CryptoNote::LEVELDB_WRITE_BUFFER_MB;
+                config.dbMaxFileSizeMB = CryptoNote::LEVELDB_MAX_FILE_SIZE_MB;
+            }
+            else
+            {
+                config.dbMaxOpenFiles = CryptoNote::ROCKSDB_MAX_OPEN_FILES;
+                config.dbReadCacheSizeMB = CryptoNote::ROCKSDB_READ_BUFFER_MB;
+                config.dbWriteBufferSizeMB = CryptoNote::ROCKSDB_WRITE_BUFFER_MB;
+                config.dbThreads = CryptoNote::ROCKSDB_BACKGROUND_THREADS;
             }
 
             if (cli.count("db-max-open-files") > 0)
@@ -295,6 +324,11 @@ namespace DaemonConfig
             if (cli.count("db-write-buffer-size") > 0)
             {
                 config.dbWriteBufferSizeMB = cli["db-write-buffer-size"].as<int>();
+            }
+
+            if (cli.count("db-max-file-size") > 0)
+            {
+                config.dbMaxFileSizeMB = cli["db-max-file-size"].as<int>();
             }
 
             if (cli.count("local-ip") > 0)
@@ -362,9 +396,14 @@ namespace DaemonConfig
                 config.enableBlockExplorer = cli["enable-blockexplorer"].as<bool>();
             }
 
+            if (cli.count("enable-blockexplorer-detailed") > 0)
+            {
+                config.enableBlockExplorerDetailed = cli["enable-blockexplorer-detailed"].as<bool>();
+            }
+
             if (cli.count("enable-cors") > 0)
             {
-                config.enableCors = cli["enable-cors"].as<std::vector<std::string>>();
+                config.enableCors = cli["enable-cors"].as<std::string>();
             }
 
             if (cli.count("fee-address") > 0)
@@ -375,6 +414,11 @@ namespace DaemonConfig
             if (cli.count("fee-amount") > 0)
             {
                 config.feeAmount = cli["fee-amount"].as<int>();
+            }
+
+            if (cli.count("transaction-validation-threads") > 0)
+            {
+                config.transactionValidationThreads = cli["transaction-validation-threads"].as<uint32_t>();
             }
 
             if (config.help) // Do we want to display the help message?
@@ -421,7 +465,7 @@ namespace DaemonConfig
         std::vector<std::string> priorityNodes;
         std::vector<std::string> seedNodes;
         std::vector<std::string> peers;
-        std::vector<std::string> cors;
+        std::string cors;
         bool updated = false;
 
         for (std::string line; std::getline(data, line);)
@@ -468,23 +512,11 @@ namespace DaemonConfig
                         throw std::runtime_error(std::string(e.what()) + " - Invalid value for " + cfgKey);
                     }
                 }
-                else if (cfgKey.compare("sqlite") == 0)
-                {
-                    config.useSqliteForLocalCaches = cfgValue.at(0) == '1';
-                    updated = true;
-                }
-                else if (cfgKey.compare("rocksdb") == 0)
-                {
-                    config.useRocksdbForLocalCaches = cfgValue.at(0) == '1';
-                    updated = true;
-                }
-#ifdef ENABLE_LZ4_COMPRESSION
                 else if (cfgKey.compare("db-enable-compression") == 0)
                 {
                     config.enableDbCompression = cfgValue.at(0) == '1';
                     updated = true;
                 }
-#endif
                 else if (cfgKey.compare("no-console") == 0)
                 {
                     config.noConsole = cfgValue.at(0) == '1';
@@ -628,9 +660,14 @@ namespace DaemonConfig
                     config.enableBlockExplorer = cfgValue.at(0) == '1';
                     updated = true;
                 }
+                else if (cfgKey.compare("enable-blockexplorer-detailed") == 0)
+                {
+                    config.enableBlockExplorerDetailed = cfgValue.at(0) == '1';
+                    updated = true;
+                }
                 else if (cfgKey.compare("enable-cors") == 0)
                 {
-                    cors.push_back(cfgValue);
+                    cors = cfgValue;
                     config.enableCors = cors;
                     updated = true;
                 }
@@ -644,6 +681,18 @@ namespace DaemonConfig
                     try
                     {
                         config.feeAmount = std::stoi(cfgValue);
+                        updated = true;
+                    }
+                    catch (std::exception &e)
+                    {
+                        throw std::runtime_error(std::string(e.what()) + " - Invalid value for " + cfgKey);
+                    }
+                }
+                else if (cfgKey.compare("transaction-validation-threads") == 0)
+                {
+                    try
+                    {
+                        config.transactionValidationThreads = std::stoi(cfgValue);
                         updated = true;
                     }
                     catch (std::exception &e)
@@ -718,22 +767,28 @@ namespace DaemonConfig
             config.logLevel = j["log-level"].GetInt();
         }
 
-        if (j.HasMember("sqlite"))
+        /* Using levelDB, lets set the level DB defaults. Will overwrite with
+         * passed in values later if present. */
+        if (j.HasMember("db-enable-level-db") && j["db-enable-level-db"].GetBool())
         {
-            config.useSqliteForLocalCaches = j["sqlite"].GetBool();
+            config.enableLevelDB = true;
+            config.dbMaxOpenFiles = CryptoNote::LEVELDB_MAX_OPEN_FILES;
+            config.dbReadCacheSizeMB = CryptoNote::LEVELDB_READ_BUFFER_MB;
+            config.dbWriteBufferSizeMB = CryptoNote::LEVELDB_WRITE_BUFFER_MB;
+            config.dbMaxFileSizeMB = CryptoNote::LEVELDB_MAX_FILE_SIZE_MB;
+        }
+        else
+        {
+            config.dbMaxOpenFiles = CryptoNote::ROCKSDB_MAX_OPEN_FILES;
+            config.dbReadCacheSizeMB = CryptoNote::ROCKSDB_READ_BUFFER_MB;
+            config.dbWriteBufferSizeMB = CryptoNote::ROCKSDB_WRITE_BUFFER_MB;
+            config.dbThreads = CryptoNote::ROCKSDB_BACKGROUND_THREADS;
         }
 
-        if (j.HasMember("rocksdb"))
-        {
-            config.useRocksdbForLocalCaches = j["rocksdb"].GetBool();
-        }
-
-#ifdef ENABLE_LZ4_COMPRESSION
         if (j.HasMember("db-enable-compression"))
         {
             config.enableDbCompression = j["db-enable-compression"].GetBool();
         }
-#endif
 
         if (j.HasMember("no-console"))
         {
@@ -758,6 +813,11 @@ namespace DaemonConfig
         if (j.HasMember("db-write-buffer-size"))
         {
             config.dbWriteBufferSizeMB = j["db-write-buffer-size"].GetInt();
+        }
+
+        if (j.HasMember("db-max-file-size"))
+        {
+            config.dbMaxFileSizeMB = j["db-max-file-size"].GetInt();
         }
 
         if (j.HasMember("allow-local-ip"))
@@ -841,13 +901,14 @@ namespace DaemonConfig
             config.enableBlockExplorer = j["enable-blockexplorer"].GetBool();
         }
 
+        if (j.HasMember("enable-blockexplorer-detailed"))
+        {
+            config.enableBlockExplorerDetailed = j["enable-blockexplorer-detailed"].GetBool();
+        }
+
         if (j.HasMember("enable-cors"))
         {
-            const Value &va = j["enable-cors"];
-            for (auto &v : va.GetArray())
-            {
-                config.enableCors.push_back(v.GetString());
-            }
+            config.enableCors = j["enable-cors"].GetString();
         }
 
         if (j.HasMember("fee-address"))
@@ -858,6 +919,11 @@ namespace DaemonConfig
         if (j.HasMember("fee-amount"))
         {
             config.feeAmount = j["fee-amount"].GetInt();
+        }
+
+        if (j.HasMember("transaction-validation-threads"))
+        {
+            config.transactionValidationThreads = j["transaction-validation-threads"].GetInt();
         }
     }
 
@@ -872,15 +938,13 @@ namespace DaemonConfig
         j.AddMember("log-file", config.logFile, alloc);
         j.AddMember("log-level", config.logLevel, alloc);
         j.AddMember("no-console", config.noConsole, alloc);
-        j.AddMember("rocksdb", config.useRocksdbForLocalCaches, alloc);
-        j.AddMember("sqlite", config.useSqliteForLocalCaches, alloc);
-#ifdef ENABLE_LZ4_COMPRESSION
+        j.AddMember("db-enable-level-db", config.enableLevelDB, alloc);
         j.AddMember("db-enable-compression", config.enableDbCompression, alloc);
-#endif
         j.AddMember("db-max-open-files", config.dbMaxOpenFiles, alloc);
-        j.AddMember("db-read-buffer-size", (config.dbReadCacheSizeMB), alloc);
+        j.AddMember("db-read-buffer-size", config.dbReadCacheSizeMB, alloc);
         j.AddMember("db-threads", config.dbThreads, alloc);
-        j.AddMember("db-write-buffer-size", (config.dbWriteBufferSizeMB), alloc);
+        j.AddMember("db-write-buffer-size", config.dbWriteBufferSizeMB, alloc);
+        j.AddMember("db-max-file-size", config.dbMaxFileSizeMB, alloc);
         j.AddMember("allow-local-ip", config.localIp, alloc);
         j.AddMember("hide-my-port", config.hideMyPort, alloc);
         j.AddMember("p2p-bind-ip", config.p2pInterface, alloc);
@@ -926,18 +990,12 @@ namespace DaemonConfig
             j.AddMember("seed-node", arr, alloc);
         }
 
-        {
-            Value arr(rapidjson::kArrayType);
-            for (auto v : config.enableCors)
-            {
-                arr.PushBack(Value().SetString(StringRef(v.c_str())), alloc);
-            }
-            j.AddMember("enable-cors", arr, alloc);
-        }
-
+        j.AddMember("enable-cors", config.enableCors, alloc);
         j.AddMember("enable-blockexplorer", config.enableBlockExplorer, alloc);
+        j.AddMember("enable-blockexplorer-detailed", config.enableBlockExplorerDetailed, alloc);
         j.AddMember("fee-address", config.feeAddress, alloc);
         j.AddMember("fee-amount", config.feeAmount, alloc);
+        j.AddMember("transaction-validation-threads", config.transactionValidationThreads, alloc);
 
         return j;
     }

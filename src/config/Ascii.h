@@ -1,5 +1,4 @@
-
-// Copyright (c) 2018, The TurtleCoin Developers
+// Copyright (c) 2018-2023, The Bitcoin Nova Developers
 //
 // Please see the included LICENSE file for more information
 
@@ -7,7 +6,7 @@
 
 #include <string>
 
-const std::string windowsAsciiArt =
+const std::string windowsAsciiArt = 
       "\n"  
        ":::::::::  ::::::::::: :::::::::::  ::::::::   ::::::::  ::::::::::: ::::    :::       ::::    :::  ::::::::  :::     :::     :::\n"     
        ":+:    :+:     :+:         :+:     :+:    :+: :+:    :+:     :+:     :+:+:   :+:       :+:+:   :+: :+:    :+: :+:     :+:   :+: :+:\n"   
@@ -17,8 +16,8 @@ const std::string windowsAsciiArt =
        "#+#    #+#     #+#         #+#     #+#    #+# #+#    #+#     #+#     #+#   #+#+#       #+#   #+#+# #+#    #+#   #+#+#+#   #+#     #+#\n" 
        "#########  ###########     ###      ########   ########  ########### ###    ####       ###    ####  ########      ###     ###     ###\n";
 
-const std::string nonWindowsAsciiArt = 
-      "\n                                                                                         \n"
+const std::string nonWindowsAsciiArt =
+    "\n                                                                                         \n"
         "██████╗ ██╗████████╗ ██████╗ ██████╗ ██╗███╗   ██╗    ███╗   ██╗ ██████╗ ██╗   ██╗ █████╗\n" 
         "██╔══██╗██║╚══██╔══╝██╔════╝██╔═══██╗██║████╗  ██║    ████╗  ██║██╔═══██╗██║   ██║██╔══██╗\n"
         "██████╔╝██║   ██║   ██║     ██║   ██║██║██╔██╗ ██║    ██╔██╗ ██║██║   ██║██║   ██║███████║\n"

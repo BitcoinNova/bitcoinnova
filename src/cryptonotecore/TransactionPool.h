@@ -31,7 +31,11 @@ namespace CryptoNote
 
         virtual const CachedTransaction &getTransaction(const Crypto::Hash &hash) const override;
 
+        virtual const std::optional<CachedTransaction> tryGetTransaction(const Crypto::Hash &hash) const override;
+
         virtual bool removeTransaction(const Crypto::Hash &hash) override;
+
+        virtual size_t getFusionTransactionCount() const override;
 
         virtual size_t getTransactionCount() const override;
 
@@ -49,6 +53,8 @@ namespace CryptoNote
         virtual uint64_t getTransactionReceiveTime(const Crypto::Hash &hash) const override;
 
         virtual std::vector<Crypto::Hash> getTransactionHashesByPaymentId(const Crypto::Hash &paymentId) const override;
+
+        virtual void flush() override;
 
       private:
         TransactionValidatorState poolState;
@@ -117,6 +123,8 @@ namespace CryptoNote
         TransactionsContainer::index<TransactionCostTag>::type &transactionCostIndex;
 
         TransactionsContainer::index<PaymentIdTag>::type &paymentIdIndex;
+
+        mutable std::mutex m_transactionsMutex;
 
         Logging::LoggerRef logger;
     };
