@@ -127,7 +127,7 @@ jobs:
   # Mac builds
   macos_build:
     name: macOS
-    runs-on: macos-12-xl
+    runs-on: macos-11
     env:
       CC: /usr/local/opt/llvm@8/bin/clang
       CXX: /usr/local/opt/llvm@8/bin/clang++
