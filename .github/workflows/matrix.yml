@@ -124,10 +124,10 @@ jobs:
           name: ${{ steps.before_deploy.outputs.artifact_name }}
           path: ./build/src/${{ steps.before_deploy.outputs.binary_path }}
 
-  # Mac builds on Catalina VM
+  # Mac builds
   macos_build:
     name: macOS
-    runs-on: macOS-10.15
+    runs-on: macos-12-xl
     env:
       CC: /usr/local/opt/llvm@8/bin/clang
       CXX: /usr/local/opt/llvm@8/bin/clang++
