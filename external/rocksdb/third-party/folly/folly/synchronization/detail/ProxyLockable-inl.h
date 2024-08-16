@@ -12,6 +12,7 @@
 #include <cassert>
 #include <memory>
 #include <mutex>
+#include <system_error>
 #include <stdexcept>
 #include <utility>
 

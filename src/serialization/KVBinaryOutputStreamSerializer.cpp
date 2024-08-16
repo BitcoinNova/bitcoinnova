@@ -4,12 +4,12 @@
 // Please see the included LICENSE file for more information.
 
 #include "KVBinaryOutputStreamSerializer.h"
-
 #include "KVBinaryCommon.h"
 
 #include <cassert>
-#include <common/StreamTools.h>
 #include <stdexcept>
+#include <limits>
+#include <common/StreamTools.h>
 
 using namespace Common;
 using namespace CryptoNote;

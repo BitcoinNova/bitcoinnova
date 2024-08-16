@@ -9,6 +9,7 @@
 #include "IWriteBatch.h"
 
 #include <string>
+#include <cstdint>
 #include <system_error>
 
 namespace CryptoNote

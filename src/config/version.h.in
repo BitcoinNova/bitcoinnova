@@ -2,15 +2,16 @@
 #define STR(x) STR_HELPER(x)
 
 #define PROJECT_NAME "BitcoinNova"
-#define PROJECT_SITE "https://www.bitcoinnova.org"
-#define PROJECT_COPYRIGHT "Copyright 2018-2023, The Bitcoin Nova Developers"
+#define PROJECT_BUILDNAME "Prometheus"
+#define PROJECT_SITE "https://bitcoinnova.github.io"
+#define PROJECT_COPYRIGHT "Copyright 2018-2024, The Bitcoin Nova Developers"
 #define APP_VER_MAJOR 0
 #define APP_VER_MINOR 28
-#define APP_VER_REV 3
+#define APP_VER_REV 4
 #define APP_VER_BUILD 1305
 
 #define BUILD_COMMIT_ID "@VERSION@"
 #define PROJECT_VERSION STR(APP_VER_MAJOR) "." STR(APP_VER_MINOR) "." STR(APP_VER_REV)
 #define PROJECT_VERSION_BUILD_NO STR(APP_VER_BUILD)
-#define PROJECT_VERSION_LONG PROJECT_VERSION "." PROJECT_VERSION_BUILD_NO " (" BUILD_COMMIT_ID ")"
+#define PROJECT_VERSION_LONG PROJECT_VERSION "." PROJECT_VERSION_BUILD_NO " (" PROJECT_BUILDNAME ")"
 #define PROJECT_DESCRIPTION PROJECT_NAME " " PROJECT_VERSION_LONG

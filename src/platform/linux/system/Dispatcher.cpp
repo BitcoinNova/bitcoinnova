@@ -4,18 +4,19 @@
 // Please see the included LICENSE file for more information.
 
 #include "Dispatcher.h"
-
-#include "ErrorMessage.h"
-
 #include <cassert>
-#include <fcntl.h>
+
 #include <stdexcept>
-#include <string.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 #include <sys/timerfd.h>
+#include <fcntl.h>
+#include <string.h>
 #include <ucontext.h>
 #include <unistd.h>
+#include "ErrorMessage.h"
+
+#include <pthread.h>
 
 namespace System
 {

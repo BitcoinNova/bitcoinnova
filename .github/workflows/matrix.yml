@@ -10,39 +10,39 @@ env:
 
 jobs:
   # Common Build matrix for builds on Ubuntu VM
-  ubuntu_build:
+  ubuntu_20_build:
     name: ${{ matrix.build_name }}
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
         # Add more compilers here if you need them
-        build_name: ['Ubuntu GCC 7', 'Ubuntu GCC 8', 'aarch64']
+        build_name: ['Ubuntu 20.04 - GCC 7', 'Ubuntu 20.04 - GCC 8', 'Ubuntu 20.04 - aarch64']
         include:
-          - build_name: 'Ubuntu GCC 7'
+          - build_name: 'Ubuntu 20.04 - GCC 7'
             package_name: 'gcc-7 g++-7'
             cc: gcc-7
             cxx: g++-7
             label: linux-gcc-7
             deployable: false
-          - build_name: 'Ubuntu GCC 8'
+          - build_name: 'Ubuntu 20.04 - GCC 8'
             package_name: 'gcc-8 g++-8'
             cc: gcc-8
             cxx: g++-8
             label: linux
             deployable: true
-          - build_name: 'aarch64'
+          - build_name: 'Ubuntu 20.04 - aarch64'
             label: aarch64
             deployable: true
     env:
       CCACHE_DIR: $GITHUB_WORKSPACE/.ccache
       LABEL: ${{ matrix.label }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       # Fetch Dependencies
       - name: Dependencies
-        if: matrix.build_name != 'aarch64'
+        if: matrix.build_name != 'Ubuntu 20.04 - aarch64'
         run: |
           sudo apt update
           sudo apt install -y libboost-all-dev libssl-dev ${{ matrix.package_name }}
@@ -50,29 +50,31 @@ jobs:
         run: |
           sudo apt install ccache
       - name: Retrieve ccache
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: .ccache
           key: ccache-${{ matrix.label }}
 
       # Configure the project with cmake
       - name: Configure
-        if: matrix.build_name != 'aarch64'
+        if: matrix.build_name != 'Ubuntu 20.04 - aarch64'
         env:
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
         run: |
           mkdir build && cd build
           cmake -DARCH=default -DCMAKE_BUILD_TYPE=Release -DSTATIC=true ..
+          
       # Build for linux
       - name: Build
-        if: matrix.build_name != 'aarch64'
+        if: matrix.build_name != 'Ubuntu 20.04 - aarch64'
         run: |
           cd build
           make -j2
+          
       # Build for aarch64
       - name: Prepare and Build (aarch64)
-        if: matrix.build_name == 'aarch64'
+        if: matrix.build_name == 'Ubuntu 20.04 - aarch64'
         run: |
           source scripts/prep-aarch64.sh
           mkdir build && cd build
@@ -81,12 +83,14 @@ jobs:
           cd src
           TARGETS="bitcoinnovad miner bitcoinnova-wallet cryptotest bitcoinnova-service wallet-api wallet-upgrader"
           ${STRIP} ${TARGETS}
+          
       # Test the crypto
       - name: Test Crypto
-        if: matrix.build_name != 'aarch64'
+        if: matrix.build_name != 'Ubuntu 20.04 - aarch64'
         run: |
           cd build/src
           ./cryptotest
+          
       # Prepare for deploy
       - name: Prepare for Deploy
         id: before_deploy
@@ -119,32 +123,244 @@ jobs:
 
       # Upload to GH Actions Artifacts
       - name: Upload To GH Artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.before_deploy.outputs.artifact_name }}
           path: ./build/src/${{ steps.before_deploy.outputs.binary_path }}
 
-  # Mac builds
-  macos_build:
-    name: macOS
-    runs-on: macos-10.15
+
+  # Common Build matrix for builds on Ubuntu Lasted VM       
+  ubuntu_22_build:
+    name: ${{ matrix.build_name }}
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # Add more compilers here if you need them
+        build_name: ['Ubuntu 22.04 - GCC 9', 'Ubuntu 22.04 - Clang 12']
+        include:
+          - build_name: 'Ubuntu 22.04 - GCC 9'
+            package_name: 'gcc-9 g++-9'
+            cc: gcc-9
+            cxx: g++-9
+            label: ubuntu-22.04-linux-gcc-9
+            deployable: false
+          - build_name: 'Ubuntu 22.04 - Clang 12'
+            package_name: 'clang-12'
+            cc: clang-12
+            cxx: clang++-12
+            label: ubuntu-22.04-linux-clang-12
+            deployable: false
     env:
-      CC: /usr/local/opt/llvm@8/bin/clang
-      CXX: /usr/local/opt/llvm@8/bin/clang++
-      LABEL: osx
       CCACHE_DIR: $GITHUB_WORKSPACE/.ccache
+      LABEL: ${{ matrix.label }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       # Fetch Dependencies
       - name: Dependencies
         run: |
-          brew uninstall --force llvm
-          brew install --force boost llvm@8 ccache
-          brew link --overwrite llvm@8
-          ln -s /usr/local/opt/llvm@8 /usr/local/opt/llvm
+          sudo apt update
+          sudo apt upgrade
+          sudo apt install -y libboost-all-dev libssl-dev ${{ matrix.package_name }}
+          
+      - name: Setup ccache
+        run: |
+          sudo apt install ccache
+          
       - name: Retrieve ccache
-        uses: actions/cache@v1
+        uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: ccache-${{ matrix.label }}     
+     
+     # Configure the project with cmake
+      - name: Configure
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          mkdir build && cd build
+          cmake -DARCH=default -DCMAKE_BUILD_TYPE=Release -DSTATIC=true ..
+          
+      # Build for linux
+      - name: Build
+        run: |
+          cd build
+          make 
+
+      # Test the crypto
+      - name: Test Crypto
+        run: |
+          cd build/src
+          ./cryptotest      
+            
+      # Prepare for deploy
+      - name: Prepare for Deploy
+        id: before_deploy
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          if [[ "${TAG:5:4}" == "tags" ]]; then export TAG=${TAG:10}; else export TAG=${COMMIT_SHA}; fi
+          cd build/src
+          TARGETS="bitcoinnovad miner bitcoinnova-wallet cryptotest bitcoinnova-service wallet-api wallet-upgrader"
+          if [[ "${LABEL}" != "aarch64" ]]; then strip ${TARGETS}; fi
+          rm -rf BitcoinNova-${TAG}
+          mkdir BitcoinNova-${TAG}
+          cp ${TARGETS} BitcoinNova-${TAG}/
+          cp ../../LICENSE BitcoinNova-${TAG}/
+          tar cvfz BitcoinNova-${TAG}-${LABEL}.tar.gz BitcoinNova-${TAG}/
+          echo ::set-output name=binary_path::BitcoinNova-${TAG}
+          echo ::set-output name=artifact_name::BitcoinNova-${TAG}-${LABEL}
+          echo ::set-output name=file_name::BitcoinNova-${TAG}-${LABEL}.tar.gz
+     
+      # Upload to GH Release
+      - name: Upload to GH Release
+        if: github.event_name == 'release' && matrix.deployable
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./build/src/${{ steps.before_deploy.outputs.file_name }}
+          asset_name: ${{ steps.before_deploy.outputs.file_name }}
+          asset_content_type: application/gzip
+
+      # Upload to GH Actions Artifacts
+      - name: Upload To GH Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.before_deploy.outputs.artifact_name }}
+          path: ./build/src/${{ steps.before_deploy.outputs.binary_path }}
+
+
+
+  # Common Build matrix for builds on Ubuntu Lasted VM       
+  ubuntu_24_build:
+    name: ${{ matrix.build_name }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # Add more compilers here if you need them
+        build_name: ['Ubuntu 24.04 - GCC 13', 'Ubuntu 24.04 - Clang 16']
+        include:
+          - build_name: 'Ubuntu 24.04 - GCC 13'
+            package_name: 'gcc-13 g++-13'
+            cc: gcc-13
+            cxx: g++-13
+            label: ubuntu-24.04-linux-gcc-13
+            deployable: false
+          - build_name: 'Ubuntu 24.04 - Clang 16'
+            package_name: 'clang-16'
+            cc: clang-16
+            cxx: clang++-16
+            label: ubuntu-24.04-linux-clang-16
+            deployable: false
+    env:
+      CCACHE_DIR: $GITHUB_WORKSPACE/.ccache
+      LABEL: ${{ matrix.label }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fetch Dependencies
+      - name: Dependencies
+        run: |
+          sudo apt update
+          sudo apt upgrade
+          sudo apt install -y libboost-all-dev libssl-dev ${{ matrix.package_name }}
+          
+      - name: Setup ccache
+        run: |
+          sudo apt install ccache
+          
+      - name: Retrieve ccache
+        uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: ccache-${{ matrix.label }}     
+     
+     # Configure the project with cmake
+      - name: Configure
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          mkdir build && cd build
+          cmake -DARCH=default -DCMAKE_BUILD_TYPE=Release -DSTATIC=true ..
+          
+      # Build for linux
+      - name: Build
+        run: |
+          cd build
+          make 
+
+      # Test the crypto
+      - name: Test Crypto
+        run: |
+          cd build/src
+          ./cryptotest      
+            
+      # Prepare for deploy
+      - name: Prepare for Deploy
+        id: before_deploy
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          if [[ "${TAG:5:4}" == "tags" ]]; then export TAG=${TAG:10}; else export TAG=${COMMIT_SHA}; fi
+          cd build/src
+          TARGETS="bitcoinnovad miner bitcoinnova-wallet cryptotest bitcoinnova-service wallet-api wallet-upgrader"
+          if [[ "${LABEL}" != "aarch64" ]]; then strip ${TARGETS}; fi
+          rm -rf BitcoinNova-${TAG}
+          mkdir BitcoinNova-${TAG}
+          cp ${TARGETS} BitcoinNova-${TAG}/
+          cp ../../LICENSE BitcoinNova-${TAG}/
+          tar cvfz BitcoinNova-${TAG}-${LABEL}.tar.gz BitcoinNova-${TAG}/
+          echo ::set-output name=binary_path::BitcoinNova-${TAG}
+          echo ::set-output name=artifact_name::BitcoinNova-${TAG}-${LABEL}
+          echo ::set-output name=file_name::BitcoinNova-${TAG}-${LABEL}.tar.gz
+     
+      # Upload to GH Release
+      - name: Upload to GH Release
+        if: github.event_name == 'release' && matrix.deployable
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./build/src/${{ steps.before_deploy.outputs.file_name }}
+          asset_name: ${{ steps.before_deploy.outputs.file_name }}
+          asset_content_type: application/gzip
+
+      # Upload to GH Actions Artifacts
+      - name: Upload To GH Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.before_deploy.outputs.artifact_name }}
+          path: ./build/src/${{ steps.before_deploy.outputs.binary_path }}      
+        
+
+  # MacOS build
+  macos_build:
+    name: macOS
+    runs-on: macos-12
+    env:
+      CC: /usr/local/opt/llvm@14/bin/clang
+      CXX: /usr/local/opt/llvm@14/bin/clang++
+      LABEL: osx
+      CCACHE_DIR: $GITHUB_WORKSPACE/.ccache
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fetch Dependencies
+      - name: Dependencies
+        run: |
+           brew install --force boost llvm@14 ccache
+           brew reinstall llvm@14
+           brew link --overwrite llvm@14
+           ln -s /usr/local/opt/llvm@14 /usr/local/opt/llvm
+      - name: Retrieve ccache
+        uses: actions/cache@v4
         with:
           path: .ccache
           key: ccache-osx
@@ -154,17 +370,19 @@ jobs:
         run: |
           mkdir build && cd build
           cmake -DARCH=default -DCMAKE_BUILD_TYPE=Release -DSTATIC=true ..
+          
       # Build for macOS
       - name: Build
         run: |
           cd build
           make -j2
+          
       # Test the crypto
       - name: Test Crypto
-        if: matrix.build_name != 'aarch64'
         run: |
           cd build/src
           ./cryptotest
+          
       # Prepare for deploy
       - name: Prepare for Deploy
         id: before_deploy
@@ -183,6 +401,7 @@ jobs:
           echo ::set-output name=binary_path::BitcoinNova-${TAG}
           echo ::set-output name=artifact_name::BitcoinNova-${TAG}-${LABEL}
           echo ::set-output name=file_name::BitcoinNova-${TAG}-${LABEL}.tar.gz
+          
       # Upload to GH Release
       - name: Upload to GH Release
         if: github.event_name == 'release'
@@ -197,25 +416,26 @@ jobs:
 
       # Upload to GH Actions Artifacts
       - name: Upload To GH Artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.before_deploy.outputs.artifact_name }}
           path: ./build/src/${{ steps.before_deploy.outputs.binary_path }}
+          
 
   windows_build:
     name: Windows
-    runs-on: windows-2019
+    runs-on: windows-latest
     env:
-      MSBUILD_PATH: "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/MSBuild/Current/Bin"
+      MSBUILD_PATH: "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/MSBuild/Current/Bin"
       LABEL: windows
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Setup clcache
         run: pip install clcache
 
       - name: Retrieve clcache
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: clcache
           key: clcache-windows
@@ -231,12 +451,14 @@ jobs:
           [Net.WebClient]::new().DownloadFile($link, $path)
           Start-Process C:\boost.exe -ArgumentList "/DIR=C:\local\boost_1_78_0","/VERYSILENT" -Wait
           Get-ChildItem C:\local\boost_1_78_0
+          
       # Configure project with cmake
       - name: Configure
         run: |
           mkdir build
           cd build
-          cmake -G "Visual Studio 16 2019" -A x64 .. -DARCH=default -DBOOST_ROOT=C:/local/boost_1_78_0
+          cmake -G "Visual Studio 17 2022" -A x64 .. -DARCH=default -DBOOST_ROOT=C:/local/boost_1_78_0
+      
       # Build for Windows
       - name: Build
         run: |
@@ -244,12 +466,14 @@ jobs:
           $env:PATH = "$env:PATH;$env:MSBUILD_PATH"
           cd build
           MSBuild BitcoinNova.sln /p:Configuration=Release /p:PlatformToolset=v142 /m
+      
       # Test the crypto
       - name: Test Crypto
         shell: bash
         run: |
           cd build/src/Release
           ./cryptotest.exe
+      
       # Prepare for deploy
       - name: Prepare for Deploy
         shell: bash
@@ -267,6 +491,7 @@ jobs:
           echo ::set-output name=binary_path::BitcoinNova-${TAG}
           echo ::set-output name=artifact_name::BitcoinNova-${TAG}-${LABEL}
           echo ::set-output name=file_name::BitcoinNova-${TAG}-${LABEL}.zip
+      
       # Upload to GH Release
       - name: Upload to GH Release
         if: github.event_name == 'release'
@@ -281,7 +506,7 @@ jobs:
 
       # Upload to GH Actions Artifacts
       - name: Upload To GH Artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.before_deploy.outputs.artifact_name }}
           path: ./build/src/Release/${{ steps.before_deploy.outputs.binary_path }}

@@ -131,7 +131,7 @@ namespace CryptoNote
 
         const uint64_t DEFAULT_MIXIN_V2 = MAXIMUM_MIXIN_V2;
 
-        const uint64_t DEFAULT_MIXIN_V3 = MAXIMUM_MIXIN_V3;
+        const uint64_t DEFAULT_MIXIN_V3 = MINIMUM_MIXIN_V3;
 
         const uint64_t DEFAULT_DUST_THRESHOLD = UINT64_C(10000);
 
@@ -383,38 +383,7 @@ namespace CryptoNote
     const static boost::uuids::uuid CRYPTONOTE_NETWORK = {
         {0xa9, 0x44, 0x04, 0x22, 0x45, 0xdb, 0x11, 0x03, 0x38, 0xbd, 0x93, 0x13, 0x41, 0x32, 0xbd, 0x04}};
 
-    const char *const SEED_NODES[] = {
-        "85.214.158.156:45222",             
- 	    "81.169.166.154:45222",             
- 	    "149.202.44.54:45222",              
- 	    "superblockchain.con-ip.com:45222",   
- 	    "mn1.bitcoinnova.org:45222",    
- 	    "mn2.bitcoinnova.org:45224",        
- 	    "mn3.bitcoinnova.org:45223",    
- 	    "mn4.bitcoinnova.org:45234",        
- 	    "mn5.bitcoinnova.org:45225",        
- 	    "mn6.bitcoinnova.org:45226",    
- 	    "mn7.bitcoinnova.org:45227",    
- 	    "mn8.bitcoinnova.org:45228",    
- 	    "mn9.bitcoinnova.org:45229",         
- 	    "mn10.bitcoinnova.org:45230", 
- 	    "mn11.bitcoinnova.org:11111",    
- 	    "mn12.bitcoinnova.org:11112",   
- 	    "mn13.bitcoinnova.org:11113",    
- 	    "mn14.bitcoinnova.org:11114",    
- 	    "mn15.bitcoinnova.org:11115",    
- 	    "mn16.bitcoinnova.org:11116",    
- 	    "mn17.bitcoinnova.org:11117",    
- 	    "mn18.bitcoinnova.org:11118",    
- 	    "mn19.bitcoinnova.org:11119",    
- 	    "mn20.bitcoinnova.org:11120",    
- 	    "btn1.bitcoinnova.org:10111",   
- 	    "btn2.bitcoinnova.org:10112",    
- 	    "btn3.bitcoinnova.org:10113",    
- 	    "btn4.bitcoinnova.org:10114",    
- 	    "btn5.bitcoinnova.org:10115",    
- 	    "btn6.bitcoinnova.org:10116",    
- 	    "btn7.bitcoinnova.org:10117",    
- 	    "btn8.bitcoinnova.org:10118", 
+    const char *const SEED_NODES[] = {         
+        "superblockchain.con-ip.com:19030",
     };
 } // namespace CryptoNote
