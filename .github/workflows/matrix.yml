@@ -246,7 +246,7 @@ jobs:
            wget https://archives.boost.io/release/1.88.0/source/boost_1_88_0.tar.gz
            tar -xjf boost_1_88_0.tar.gz
            cd boost_1_88_0
-           ./bootstrap.sh --prefix=/usr/local/boost_1_88 --with-libraries=all
+           ./bootstrap.sh --prefix=/usr/local/boost_1_88 --with-libraries=all --without-libraries=mpi
            ./b2 install
            
       - name: Retrieve ccache
