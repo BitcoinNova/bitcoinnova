@@ -446,7 +446,7 @@ jobs:
       # Install boost
       - name: Install Boost 1.89.0
         run: |
-          $link = "https://boost.teeks99.com/bin/1.89.0/boost_1_89_0-msvc-14.2-64.exe"
+          $link = "https://archives.boost.io/release/1.89.0/binaries/boost_1_89_0-msvc-14.2-64.exe"
           $path = "C:\boost.exe"
           [Net.WebClient]::new().DownloadFile($link, $path)
           Start-Process C:\boost.exe -ArgumentList "/DIR=C:\local\boost_1_89_0","/VERYSILENT" -Wait
