@@ -450,7 +450,7 @@ jobs:
           Expand-Archive boost.zip -DestinationPath C:/local/
 
           cd C:/local/boost_1_89_0
-          .\bootstrap.bat
+          .\bootstrap.bat & "C:/Program Files/Microsoft Visual Studio/2022/Enterprise\VC\Auxiliary\Build\vcvars64.bat"
           .\b2 toolset=msvc-14.2 address-model=64 link=static runtime-link=static 
           
       # Configure project with cmake
