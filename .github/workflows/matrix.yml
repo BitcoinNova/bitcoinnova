@@ -447,6 +447,8 @@ jobs:
         run: |
          $ErrorActionPreference = "Stop"
 
+         New-Item -ItemType Directory -Path "C:\local" -Force
+
          Invoke-WebRequest -Uri "https://boostorg.jfrog.io/artifactory/main/release/1.89.0/source/boost_1_89_0.zip" -OutFile "C:\local\boost.zip"
 
          Expand-Archive -Path "C:\local\boost.zip" -DestinationPath "C:\local\"
