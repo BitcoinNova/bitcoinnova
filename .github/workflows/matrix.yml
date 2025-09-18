@@ -444,22 +444,17 @@ jobs:
         run: choco install openssl
 
       - name: Install Boost 1.89.0
+        shell: pwsh
         run: |
-         $ErrorActionPreference = "Stop"
-
-         New-Item -ItemType Directory -Path "C:\local" -Force
-
-         Invoke-WebRequest -Uri "https://boostorg.jfrog.io/artifactory/main/release/1.89.0/source/boost_1_89_0.zip" -OutFile "C:\local\boost.zip"
-
-         Expand-Archive -Path "C:\local\boost.zip" -DestinationPath "C:\local\"
-
-         Set-Location "C:\local\boost_1_89_0"
-
-         & "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Path C:\local -Force
+          Invoke-WebRequest "https://boostorg.jfrog.io/artifactory/main/release/1.89.0/source/boost_1_89_0.zip" -OutFile C:\local\boost.zip
+          Expand-Archive C:\local\boost.zip -DestinationPath C:\local -Force
+          Set-Location C:\local\boost_1_89_0
+          & "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
          .\bootstrap.bat
          .\b2 toolset=msvc-14.2 address-model=64 link=static runtime-link=static
-    
+
       # Configure project with cmake
       - name: Configure
         run: |
