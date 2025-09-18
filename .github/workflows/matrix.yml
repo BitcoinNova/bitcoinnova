@@ -224,10 +224,10 @@ jobs:
   # MacOS build
   macos_build:
     name: macOS
-    runs-on: macos-12
+    runs-on: macos-13
     env:
-      CC: /usr/local/opt/llvm@14/bin/clang
-      CXX: /usr/local/opt/llvm@14/bin/clang++
+      CC: /usr/local/opt/llvm@15/bin/clang
+      CXX: /usr/local/opt/llvm@15/bin/clang++
       LABEL: osx
       CCACHE_DIR: $GITHUB_WORKSPACE/.ccache
     steps:
@@ -333,8 +333,8 @@ jobs:
           Expand-Archive C:\local\boost.zip -DestinationPath C:\local -Force
           Set-Location C:\local\boost_1_89_0
           & "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-          bootstrap.bat
-          b2 toolset=msvc-14.2 address-model=64 link=static runtime-link=static
+          .\bootstrap.bat
+          .\b2 toolset=msvc-14.2 address-model=64 link=static runtime-link=static
 
       # Configure project with cmake
       - name: Configure
