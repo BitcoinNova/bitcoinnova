@@ -236,10 +236,19 @@ jobs:
       # Fetch Dependencies
       - name: Dependencies
         run: |
-           brew install --force boost llvm@15 ccache
+           brew install --force llvm@15 ccache
            brew reinstall llvm@15
            brew link --overwrite llvm@15
            ln -s /usr/local/opt/llvm@15 /usr/local/opt/llvm
+
+      - name: Boost 1.88
+        run: |
+           wget https://boostorg.jfrog.io/artifactory/main/release/1.88.0/source/boost_1_88_0.tar.gz
+           tar xzf boost_1_88_0.tar.gz
+           cd boost_1_88_0
+           ./bootstrap.sh --prefix=/usr/local/boost_1_88 --with-libraries=all
+           ./b2 install
+           
       - name: Retrieve ccache
         uses: actions/cache@v4
         with:
@@ -250,7 +259,7 @@ jobs:
       - name: Configure
         run: |
           mkdir build && cd build
-          cmake -DARCH=default -DCMAKE_BUILD_TYPE=Release -DSTATIC=true ..
+          cmake -DARCH=default -DCMAKE_BUILD_TYPE=Release -DSTATIC=true -DBOOST_ROOT=/usr/local/boost_1_88 ..
           
       # Build for macOS
       - name: Build
@@ -324,24 +333,20 @@ jobs:
       - name: Install OpenSSL
         run: choco install openssl
 
-      - name: Install Boost 1.89.0
-        shell: pwsh
+      - name: Install Boost 1.88.0
         run: |
-          $ErrorActionPreference = "Stop"
-          New-Item -ItemType Directory -Path C:\local -Force
-          Invoke-WebRequest "https://boostorg.jfrog.io/artifactory/main/release/1.89.0/source/boost_1_89_0.zip" -OutFile C:\local\boost.zip
-          Expand-Archive C:\local\boost.zip -DestinationPath C:\local -Force
-          Set-Location C:\local\boost_1_89_0
-          & "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-          .\bootstrap.bat
-          .\b2 toolset=msvc-14.2
+          $link = "https://boost.teeks99.com/bin/1.88.0/boost_1_88_0-msvc-14.2-64.exe"
+          $path = "C:\boost.exe"
+          [Net.WebClient]::new().DownloadFile($link, $path)
+          Start-Process C:\boost.exe -ArgumentList "/DIR=C:\local\boost_1_88_0","/VERYSILENT" -Wait
+          Get-ChildItem C:\local\boost_1_88_0
 
       # Configure project with cmake
       - name: Configure
         run: |
           mkdir build
           cd build
-          cmake -G "Visual Studio 17 2022" -A x64 .. -DARCH=default -DBOOST_ROOT=C:/local/boost_1_89_0 -DBOOST_INCLUDEDIR=C:/local/boost_1_89_0 -DBOOST_LIBRARYDIR=C:/local/boost_1_89_0/lib64-msvc-14.2
+          cmake -G "Visual Studio 17 2022" -A x64 .. -DARCH=default -DBOOST_ROOT=C:/local/boost_1_88_0
       
       # Build for Windows
       - name: Build
