@@ -246,7 +246,7 @@ jobs:
            wget https://archives.boost.io/release/1.88.0/source/boost_1_88_0.tar.gz
            tar -xjf boost_1_88_0.tar.gz
            cd boost_1_88_0
-           ./bootstrap.sh --prefix=/usr/local/boost_1_88 --with-libraries=all --without-libraries=mpi
+           ./bootstrap.sh --prefix=$GITHUB_WORKSPACE/boost_1_88 --with-libraries=all --without-libraries=mpi
            ./b2 install
            
       - name: Retrieve ccache
@@ -259,7 +259,7 @@ jobs:
       - name: Configure
         run: |
           mkdir build && cd build
-          cmake -DARCH=default -DCMAKE_BUILD_TYPE=Release -DSTATIC=true -DBOOST_ROOT=/usr/local/boost_1_88 ..
+          cmake -DARCH=default -DCMAKE_BUILD_TYPE=Release -DSTATIC=true -DBOOST_ROOT=$GITHUB_WORKSPACE/boost_1_88 ..
           
       # Build for macOS
       - name: Build
