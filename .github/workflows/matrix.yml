@@ -446,11 +446,12 @@ jobs:
       # Install boost
       - name: Install Boost 1.89.0
         run: |
-          $link = "https://archives.boost.io/release/1.89.0/binaries/boost_1_89_0-msvc-14.2-64.exe"
-          $path = "C:\boost.exe"
-          [Net.WebClient]::new().DownloadFile($link, $path)
-          Start-Process C:\boost.exe -ArgumentList "/DIR=C:\local\boost_1_89_0","/VERYSILENT" -Wait
-          Get-ChildItem C:\local\boost_1_89_0
+          Invoke-WebRequest -Uri https://boostorg.jfrog.io/artifactory/main/release/1.89.0/source/boost_1_89_0.zip -OutFile boost.zip
+          Expand-Archive boost.zip -DestinationPath C:/local/
+
+          cd C:/local/boost_1_89_0
+          .\bootstrap.bat
+          .\b2 toolset=msvc-14.2 address-model=64 link=static runtime-link=static 
           
       # Configure project with cmake
       - name: Configure
