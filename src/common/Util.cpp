@@ -10,7 +10,7 @@
 #include <cstdio>
 #include <cstring>
 
-#ifdef WIN32
+#if defined(_WIN32) || defined(_WIN64)
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -19,7 +19,7 @@
 #include <strsafe.h>
 #include <windows.h>
 
-#else
+#elif !defined(_WIN32) && !defined(_WIN64)
 #include <sys/utsname.h>
 #endif
 
