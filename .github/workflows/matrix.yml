@@ -347,7 +347,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake -G "Visual Studio 17 2022" -A x64 .. -DARCH=default -DBOOST_ROOT=C:/local/boost_1_87_0
+          cmake -G "Visual Studio 17 2022" -A x64 .. -DARCH=default -DBOOST_ROOT=C:/local/boost_1_87_0 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
       # Build for Windows
       - name: Build
         run: |
