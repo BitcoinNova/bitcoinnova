@@ -346,7 +346,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake -G "Visual Studio 17 2022" -A x64 .. -DARCH=default -DBOOST_ROOT=C:/local/boost_1_88_0 -DCMAKE_CXX_FLAGS="/DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS /DBOOST_MPL_LIMIT_VECTOR_SIZE=50"
+          cmake -G "Visual Studio 17 2022" -A x64 .. -DARCH=default -DBOOST_ROOT=C:/local/boost_1_88_0 -DCMAKE_CXX_FLAGS="/MT /DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS /DBOOST_MPL_LIMIT_VECTOR_SIZE=50"
       
       # Build for Windows
       - name: Build
@@ -354,7 +354,7 @@ jobs:
           $env:CLCACHE_DIR = "$env:GITHUB_WORKSPACE\clcache"
           $env:PATH = "$env:PATH;$env:MSBUILD_PATH"
           cd build
-          MSBuild BitcoinNova.sln /p:Configuration=Release /p:PlatformToolset=v142 /m  /p:CLCompileAdditionalOptions="/DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS /DBOOST_MPL_LIMIT_VECTOR_SIZE=50"
+          MSBuild BitcoinNova.sln /p:Configuration=Release /p:PlatformToolset=v142 /m  /p:CLCompileAdditionalOptions="/DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS /DBOOST_MPL_LIMIT_VECTOR_SIZE=50" /p:RuntimeLibrary=MultiThreaded
       
       # Test the crypto
       - name: Test Crypto
