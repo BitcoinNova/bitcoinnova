@@ -333,28 +333,28 @@ jobs:
       - name: Install OpenSSL
         run: choco install openssl --version=3.5.3
 
-      - name: Install Boost 1.88.0
+      # Install boost
+      - name: Install Boost 1.87.0
         run: |
-          $link = "https://boost.teeks99.com/bin/1.88.0/boost_1_88_0-msvc-14.2-64.exe"
+          $link = "https://boost.teeks99.com/bin/1.87.0/boost_1_87_0-msvc-14.2-64.exe"
           $path = "C:\boost.exe"
           [Net.WebClient]::new().DownloadFile($link, $path)
-          Start-Process C:\boost.exe -ArgumentList "/DIR=C:\local\boost_1_88_0","/VERYSILENT" -Wait
-          Get-ChildItem C:\local\boost_1_88_0
+          Start-Process C:\boost.exe -ArgumentList "/DIR=C:\local\boost_1_87_0","/VERYSILENT" -Wait
+          Get-ChildItem C:\local\boost_1_87_0
 
       # Configure project with cmake
       - name: Configure
         run: |
           mkdir build
           cd build
-          cmake -G "Visual Studio 17 2022" -A x64 .. -DARCH=default -DBOOST_ROOT=C:/local/boost_1_88_0 -DCMAKE_CXX_FLAGS="/MT /DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS /DBOOST_MPL_LIMIT_VECTOR_SIZE=50"
-      
+          cmake -G "Visual Studio 17 2022" -A x64 .. -DARCH=default -DBOOST_ROOT=C:/local/boost_1_87_0
       # Build for Windows
       - name: Build
         run: |
           $env:CLCACHE_DIR = "$env:GITHUB_WORKSPACE\clcache"
           $env:PATH = "$env:PATH;$env:MSBUILD_PATH"
           cd build
-          MSBuild BitcoinNova.sln /p:Configuration=Release /p:PlatformToolset=v142 /m  /p:CLCompileAdditionalOptions="/DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS /DBOOST_MPL_LIMIT_VECTOR_SIZE=50" /p:RuntimeLibrary=MultiThreaded
+          MSBuild BitcoinNova.sln /p:Configuration=Release /p:PlatformToolset=v142 /m
       
       # Test the crypto
       - name: Test Crypto
