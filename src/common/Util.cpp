@@ -14,12 +14,10 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
-
 #include <shlobj.h>
 #include <strsafe.h>
 #include <windows.h>
-
-#elif !defined(_WIN32) && !defined(_WIN64)
+#else
 #include <sys/utsname.h>
 #endif
 
