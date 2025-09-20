@@ -423,7 +423,7 @@ namespace Crypto
     {
         if (!Common::podFromHex(j.get<std::string>(), h.data))
         {
-            const auto err = nlohmann::detail::parse_error::create(100, 0, std::string("Wrong length or not hex!"));
+            const auto err = nlohmann::detail::parse_error::create(100, 0, std::string("Wrong length or not hex!"), nullptr);
 
             throw nlohmann::json::parse_error(err);
         }
