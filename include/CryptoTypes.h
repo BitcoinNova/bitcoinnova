@@ -438,7 +438,7 @@ namespace Crypto
     {
         if (!Common::podFromHex(j.get<std::string>(), p.data))
         {
-            const auto err = nlohmann::detail::parse_error::create(100, 0, "Wrong length or not hex!");
+            const auto err = nlohmann::detail::parse_error::create(100, 0, std::string("Wrong length or not hex!"), nullptr);
 
             throw nlohmann::json::parse_error(err);
         }
@@ -453,7 +453,7 @@ namespace Crypto
     {
         if (!Common::podFromHex(j.get<std::string>(), s.data))
         {
-            const auto err = nlohmann::detail::parse_error::create(100, 0, "Wrong length or not hex!");
+            const auto err = nlohmann::detail::parse_error::create(100, 0, std::string("Wrong length or not hex!"), nullptr);
 
             throw nlohmann::json::parse_error(err);
         }
@@ -468,7 +468,7 @@ namespace Crypto
     {
         if (!Common::podFromHex(j.get<std::string>(), k.data))
         {
-            const auto err = nlohmann::detail::parse_error::create(100, 0, "Wrong length or not hex!");
+            const auto err = nlohmann::detail::parse_error::create(100, 0, std::string("Wrong length or not hex!"), nullptr);
 
             throw nlohmann::json::parse_error(err);
         }
@@ -483,7 +483,7 @@ namespace Crypto
     {
         if (!Common::podFromHex(j.get<std::string>(), k.data))
         {
-            const auto err = nlohmann::detail::parse_error::create(100, 0, "Wrong length or not hex!");
+            const auto err = nlohmann::detail::parse_error::create(100, 0, std::string("Wrong length or not hex!"), nullptr);
 
             throw nlohmann::json::parse_error(err);
         }
