@@ -276,7 +276,7 @@ namespace CryptoNote
     inline void from_json(const nlohmann::json &j, RandomOuts &r)
     {
         r.amount = j.at("amount").get<uint64_t>();
-        r.outs = j.at("outs").get_to<std::vector<OutputEntry>>();
+        r.outs = j.at("outs").get<std::vector<OutputEntry>>();
     }
 
     inline void to_json(nlohmann::json &j, const OutputEntry &o)
