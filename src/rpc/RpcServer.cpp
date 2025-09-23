@@ -6,7 +6,6 @@
 #ifdef _WIN32
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
-#undef GetObject
 #endif
 
 //////////////////////////
@@ -26,6 +25,13 @@
 #include <utilities/ColouredMsg.h>
 #include <utilities/FormatTools.h>
 #include <utilities/ParseExtra.h>
+
+// Aquí se asegura que GetObject de Windows no rompa RapidJSON
+#ifdef _WIN32
+#undef GetObject
+#endif
+
+#include <rapidjson/document.h>   // incluir RapidJSON después del #undef
 
 RpcServer::RpcServer(
     const uint16_t bindPort,
