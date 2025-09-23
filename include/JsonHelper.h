@@ -111,7 +111,7 @@ template<typename T> JSONObject getObjectFromJSON(const T &j, const std::string 
         throw std::invalid_argument("JSON parameter is wrong type. Expected Object, got " + kTypeNames[val.GetType()]);
     }
 
-    return val.Get_Object();
+    return val.GetObject();
 }
 
 template<typename T> bool getBoolFromJSON(const T &j, const std::string &key)
