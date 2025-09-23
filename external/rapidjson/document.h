@@ -42,13 +42,13 @@ RAPIDJSON_DIAG_OFF(4244) // conversion from kXxxFlags to 'uint16_t', possible lo
 RAPIDJSON_DIAG_OFF(effc++)
 #endif // __GNUC__
 
-#ifdef GetObject
+#ifdef Get_Object
 // see https://github.com/Tencent/rapidjson/issues/1448
-// a former included windows.h might have defined a macro called GetObject, which affects
-// GetObject defined here. This ensures the macro does not get applied
-#pragma push_macro("GetObject")
+// a former included windows.h might have defined a macro called Get_Object, which affects
+// Get_Object defined here. This ensures the macro does not get applied
+#pragma push_macro("Get_Object")
 #define RAPIDJSON_WINDOWS_GETOBJECT_WORKAROUND_APPLIED
-#undef GetObject
+#undef Get_Object
 #endif
 
 #ifndef RAPIDJSON_NOMEMBERITERATORCLASS
