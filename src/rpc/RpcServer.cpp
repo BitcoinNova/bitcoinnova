@@ -2,6 +2,13 @@
 //
 // Please see the included LICENSE file for more information.
 
+// Evita conflictos con macros de Windows
+#ifdef _WIN32
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#undef GetObject
+#endif
+
 //////////////////////////
 #include <rpc/RpcServer.h>
 //////////////////////////
