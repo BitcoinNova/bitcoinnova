@@ -373,16 +373,25 @@ void WalletSynchronizer::completeBlockProcessing(
 
     /* The input has been spent, discard the key image so we
        don't double spend it */
-    for (const auto &[publicKey, keyImage] : blockScanInfo.keyImagesToMarkSpent)
-    {
-        std::stringstream stream;
-
-        stream << "Marking key image: " << keyImage << " as spent";
-
-        Logger::logger.log(stream.str(), Logger::INFO, {Logger::SYNC});
-
-        m_subWallets->markInputAsSpent(keyImage, publicKey, block.blockHeight);
-    }
+        for (const auto &[publicKey, keyImage] : blockScanInfo.keyImagesToMarkSpent)
+        {
+            const uint64_t range = 5;
+            const uint64_t baseHeight = static_cast<uint64_t>(block.blockHeight);
+        
+            std::stringstream stream;
+            stream << "Marking key image: " << keyImage
+                   << " as spent from height " << (baseHeight - range)
+                   << " to " << (baseHeight + range);
+            Logger::logger.log(stream.str(), Logger::INFO, {Logger::SYNC});
+        
+            // Marca como gastado desde baseHeight - 5 hasta baseHeight + 5
+            for (uint64_t height = std::max<uint64_t>(0, baseHeight - range);
+                 height <= baseHeight + range;
+                 ++height)
+            {
+                m_subWallets->markInputAsSpent(keyImage, publicKey, static_cast<uint64_t>(height));
+            }
+        }
 
     /* Make sure to do this at the end, once the transactions are fully
        processed! Otherwise, we could miss a transaction depending upon
