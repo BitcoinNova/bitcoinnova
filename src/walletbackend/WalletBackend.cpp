@@ -6,6 +6,7 @@
 #include <walletbackend/WalletBackend.h>
 ////////////////////////////////////////
 
+#include <cstdio>
 #include "JsonHelper.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
@@ -110,12 +111,25 @@ WalletBackend::WalletBackend()
 /* Deconstructor */
 WalletBackend::~WalletBackend()
 {
-    /* Save, but only if the non default constructor was used - else things
-       will be uninitialized, and crash */
-    if (m_daemon != nullptr)
+    try
     {
-        save();
+        if (m_walletSynchronizer)
+        {
+            m_walletSynchronizer->stop();
+        }
+
+        std::lock_guard<std::mutex> guard(m_saveMutex);
+        if (m_daemon != nullptr)
+        {
+            // ya paramos sincronizador, guardado seguro
+            unsafeSave();
+        }
     }
+    catch (const std::exception &e)
+    {
+        Logger::logger.log(std::string("Exception in WalletBackend destructor: ") + e.what(), Logger::ERROR);
+    }
+    catch (...) {}
 }
 
 /* Standard Constructor */
@@ -705,18 +719,25 @@ void WalletBackend::init()
 
 Error WalletBackend::save() const
 {
+    // Protege la operación de guardado desde múltiples hilos
     std::lock_guard<std::mutex> guard(m_saveMutex);
 
     try
     {
-        // Pausa el sincronizador antes de guardar, así no hay escrituras simultáneas
+        // PauseSynchronizerToRunFunction ya pausa el sincronizador internamente
         return m_syncRAIIWrapper->pauseSynchronizerToRunFunction(
             [this]() { return unsafeSave(); });
     }
     catch (const std::exception &e)
     {
+        Logger::logger.log(std::string("Exception during WalletBackend::save(): ") + e.what(),
+                           Logger::FATAL, {Logger::FILESYSTEM, Logger::SAVE});
+        return WALLET_FILE_CORRUPTED;
     }
-    catch (...) {
+    catch (...)
+    {
+        Logger::logger.log("Unknown exception during WalletBackend::save()", Logger::FATAL, {Logger::FILESYSTEM, Logger::SAVE});
+        return WALLET_FILE_CORRUPTED;
     }
 }
 
@@ -726,40 +747,47 @@ Error WalletBackend::save() const
 
 Error WalletBackend::unsafeSave() const
 {
+    // Bloqueamos por si alguien llama unsafeSave() directamente
     std::lock_guard<std::mutex> lock(m_saveMutex);
 
     try
     {
-        // Serializa el wallet a JSON
-        std::string walletJSON = unsafeToJSON();
+        // Serializa a JSON (puede lanzar)
+        const std::string json = unsafeToJSON();
 
-        // Guarda el JSON en disco
-        Error err = saveWalletJSONToDisk(walletJSON, m_filename, m_password);
-        if (err)
+        // Guardado atómico: primero en tmp, luego rename
+        const std::string tmpFile = m_filename + ".tmp";
+
+        // saveWalletJSONToDisk escribe el archivo; le pasamos tmpFile
+        Error err = WalletBackend::saveWalletJSONToDisk(json, tmpFile, m_password);
+        if (err != SUCCESS)
         {
-            Logger::logger.log("Failed to save wallet file", Logger::ERROR, {Logger::FILESYSTEM, Logger::SAVE});
+            Logger::logger.log("Failed to write temporary wallet file", Logger::FATAL, {Logger::FILESYSTEM, Logger::SAVE});
+            // Borra tmp por seguridad
+            std::remove(tmpFile.c_str());
             return err;
         }
 
-        return Error::None;
+        // Rename atómico (POSIX atomic)
+        if (std::rename(tmpFile.c_str(), m_filename.c_str()) != 0)
+        {
+            Logger::logger.log("Failed to rename temporary wallet file to final destination", Logger::FATAL, {Logger::FILESYSTEM, Logger::SAVE});
+            std::remove(tmpFile.c_str());
+            return WALLET_FILE_CORRUPTED;
+        }
+
+        return SUCCESS;
     }
     catch (const std::exception &e)
     {
-        Logger::logger.log(std::string("Exception while saving wallet: ") + e.what(), Logger::ERROR, {Logger::FILESYSTEM, Logger::SAVE});
-        return Error::WalletFileSaveFailed;
+        Logger::logger.log(std::string("Exception while saving wallet: ") + e.what(), Logger::FATAL, {Logger::FILESYSTEM, Logger::SAVE});
+        return WALLET_FILE_CORRUPTED;
     }
     catch (...)
     {
-        Logger::logger.log("Unknown exception while saving wallet", Logger::ERROR, {Logger::FILESYSTEM, Logger::SAVE});
-        return Error::WalletFileSaveFailed;
+        Logger::logger.log("Unknown exception while saving wallet", Logger::FATAL, {Logger::FILESYSTEM, Logger::SAVE});
+        return WALLET_FILE_CORRUPTED;
     }
-}
-
-
-
-Error WalletBackend::unsafeSave() const
-{
-    return WalletBackend::saveWalletJSONToDisk(unsafeToJSON(), m_filename, m_password);
 }
 
 /* Get the balance for one subwallet (error, unlocked, locked) */
