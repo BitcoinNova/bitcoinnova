@@ -751,7 +751,7 @@ Error WalletBackend::save() const
 Error WalletBackend::unsafeSave() const
 {
     // Bloqueamos por si alguien llama unsafeSave() directamente
-    std::lock_guard<std::mutex> lock(m_saveMutex);
+   // std::lock_guard<std::mutex> lock(m_saveMutex);
 
     try
     {
