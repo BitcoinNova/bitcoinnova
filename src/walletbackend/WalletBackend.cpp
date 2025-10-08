@@ -715,15 +715,8 @@ Error WalletBackend::save() const
     }
     catch (const std::exception &e)
     {
-        Logger::logger.log(std::string("Exception during WalletBackend::save(): ") + e.what(),
-                           Logger::ERROR, {Logger::FILESYSTEM, Logger::SAVE});
-        return WALLET_FILE_SAVE_FAILED;
     }
-    catch (...)
-    {
-        Logger::logger.log("Unknown exception during WalletBackend::save()",
-                           Logger::ERROR, {Logger::FILESYSTEM, Logger::SAVE});
-        return WALLET_FILE_SAVE_FAILED;
+    catch (...) {
     }
 }
 
