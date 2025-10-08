@@ -122,7 +122,7 @@ WalletBackend::~WalletBackend()
         if (m_daemon != nullptr)
         {
             // ya paramos sincronizador, guardado seguro
-            unsafeSave();
+           save();
         }
     }
     catch (const std::exception &e)     
@@ -750,32 +750,37 @@ Error WalletBackend::save() const
 
 Error WalletBackend::unsafeSave() const
 {
-    // Bloqueamos por si alguien llama unsafeSave() directamente
-   // std::lock_guard<std::mutex> lock(m_saveMutex);
-
     try
     {
-        // Serializa a JSON (puede lanzar)
+        // Serializa la wallet a JSON
         const std::string json = unsafeToJSON();
 
-        // Guardado atómico: primero en tmp, luego rename
+        // Archivo temporal
         const std::string tmpFile = m_filename + ".tmp";
 
-        // saveWalletJSONToDisk escribe el archivo; le pasamos tmpFile
+        // Guardamos la wallet en el archivo temporal
         Error err = WalletBackend::saveWalletJSONToDisk(json, tmpFile, m_password);
         if (err != SUCCESS)
         {
             Logger::logger.log("Failed to write temporary wallet file", Logger::FATAL, {Logger::FILESYSTEM, Logger::SAVE});
-            // Borra tmp por seguridad
             std::remove(tmpFile.c_str());
             return err;
         }
 
-        // Rename atómico (POSIX atomic)
+        // Intentamos renombrar atómicamente
         if (std::rename(tmpFile.c_str(), m_filename.c_str()) != 0)
         {
-            Logger::logger.log("Failed to rename temporary wallet file to final destination", Logger::FATAL, {Logger::FILESYSTEM, Logger::SAVE});
-            std::remove(tmpFile.c_str());
+            Logger::logger.log("Failed to rename temporary wallet file to final destination. Creating backup.", Logger::FATAL, {Logger::FILESYSTEM, Logger::SAVE});
+
+            // Crear backup seguro
+            std::string backupFile = m_filename + ".bak";
+            if (std::rename(tmpFile.c_str(), backupFile.c_str()) != 0)
+            {
+                Logger::logger.log("Failed to move temporary wallet to backup file. Manual intervention required.", Logger::FATAL, {Logger::FILESYSTEM, Logger::SAVE});
+                std::remove(tmpFile.c_str());
+                return WALLET_FILE_CORRUPTED;
+            }
+
             return WALLET_FILE_CORRUPTED;
         }
 
