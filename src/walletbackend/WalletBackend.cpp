@@ -125,9 +125,12 @@ WalletBackend::~WalletBackend()
             unsafeSave();
         }
     }
-    catch (const std::exception &e)
+    catch (const std::exception &e)     
     {
-        Logger::logger.log(std::string("Exception in WalletBackend destructor: ") + e.what(), Logger::ERROR);
+        Logger::logger.log(
+            std::string("Exception in WalletBackend destructor: ") + e.what(),
+            Logger::FATAL,
+            {Logger::FILESYSTEM, Logger::SAVE});
     }
     catch (...) {}
 }
