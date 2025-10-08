@@ -705,8 +705,28 @@ void WalletBackend::init()
 
 Error WalletBackend::save() const
 {
-    return m_syncRAIIWrapper->pauseSynchronizerToRunFunction([this]() { return unsafeSave(); });
+    std::lock_guard<std::mutex> guard(m_saveMutex);
+
+    try
+    {
+        // Pausa el sincronizador antes de guardar, así no hay escrituras simultáneas
+        return m_syncRAIIWrapper->pauseSynchronizerToRunFunction(
+            [this]() { return unsafeSave(); });
+    }
+    catch (const std::exception &e)
+    {
+        Logger::logger.log(std::string("Exception during WalletBackend::save(): ") + e.what(),
+                           Logger::ERROR, {Logger::FILESYSTEM, Logger::SAVE});
+        return WALLET_FILE_SAVE_FAILED;
+    }
+    catch (...)
+    {
+        Logger::logger.log("Unknown exception during WalletBackend::save()",
+                           Logger::ERROR, {Logger::FILESYSTEM, Logger::SAVE});
+        return WALLET_FILE_SAVE_FAILED;
+    }
 }
+
 
 /* Unsafe because it doesn't lock any data structures - need to stop the
    blockchain synchronizer first (Call save()) */
