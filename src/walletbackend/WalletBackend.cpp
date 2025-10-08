@@ -723,6 +723,40 @@ Error WalletBackend::save() const
 
 /* Unsafe because it doesn't lock any data structures - need to stop the
    blockchain synchronizer first (Call save()) */
+
+Error WalletBackend::unsafeSave() const
+{
+    std::lock_guard<std::mutex> lock(m_saveMutex);
+
+    try
+    {
+        // Serializa el wallet a JSON
+        std::string walletJSON = unsafeToJSON();
+
+        // Guarda el JSON en disco
+        Error err = saveWalletJSONToDisk(walletJSON, m_filename, m_password);
+        if (err)
+        {
+            Logger::logger.log("Failed to save wallet file", Logger::ERROR, {Logger::FILESYSTEM, Logger::SAVE});
+            return err;
+        }
+
+        return Error::None;
+    }
+    catch (const std::exception &e)
+    {
+        Logger::logger.log(std::string("Exception while saving wallet: ") + e.what(), Logger::ERROR, {Logger::FILESYSTEM, Logger::SAVE});
+        return Error::WalletFileSaveFailed;
+    }
+    catch (...)
+    {
+        Logger::logger.log("Unknown exception while saving wallet", Logger::ERROR, {Logger::FILESYSTEM, Logger::SAVE});
+        return Error::WalletFileSaveFailed;
+    }
+}
+
+
+
 Error WalletBackend::unsafeSave() const
 {
     return WalletBackend::saveWalletJSONToDisk(unsafeToJSON(), m_filename, m_password);
