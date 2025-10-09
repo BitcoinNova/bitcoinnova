@@ -759,10 +759,7 @@ Error WalletBackend::unsafeSave() const
 
             if (ec)
             {
-                Logger::logger.log(
-                    "No se pudo crear el backup del wallet: " + ec.message(),
-                    Logger::ERROR,
-                    {Logger::FILESYSTEM, Logger::SAVE});
+                Logger::logger.log( "No se pudo crear el backup del wallet: " + ec.message(), Logger::FATAL, {Logger::FILESYSTEM, Logger::SAVE});
                 // No retornamos aún, solo avisamos. Puede seguir guardando.
             }
         }
