@@ -35,6 +35,8 @@
 #include <utilities/Utilities.h>
 #include <walletbackend/Constants.h>
 #include <walletbackend/Transfer.h>
+#include <filesystem>
+namespace fs = std::filesystem;
 
 using namespace rapidjson;
 
@@ -744,52 +746,29 @@ Error WalletBackend::save() const
 
 Error WalletBackend::unsafeSave() const
 {
-    try
-    {
-        // Serializa la wallet a JSON
-        const std::string json = unsafeToJSON();
+        // 1️⃣ Crear ruta del archivo original
+        fs::path originalPath = m_filename;
+        fs::path backupPath = originalPath;
+        backupPath += ".bak";
 
-        // Archivo temporal
-        const std::string tmpFile = m_filename + ".tmp";
-
-        // Guardamos la wallet en el archivo temporal
-        Error err = WalletBackend::saveWalletJSONToDisk(json, tmpFile, m_password);
-        if (err != SUCCESS)
+        // 2️⃣ Hacer backup del archivo actual (si existe)
+        if (fs::exists(originalPath))
         {
-            Logger::logger.log("Failed to write temporary wallet file", Logger::FATAL, {Logger::FILESYSTEM, Logger::SAVE});
-            std::remove(tmpFile.c_str());
-            return err;
-        }
+            std::error_code ec;
+            fs::copy_file(originalPath, backupPath, fs::copy_options::overwrite_existing, ec);
 
-        // Intentamos renombrar atómicamente
-        if (std::rename(tmpFile.c_str(), m_filename.c_str()) != 0)
-        {
-            Logger::logger.log("Failed to rename temporary wallet file to final destination. Creating backup.", Logger::FATAL, {Logger::FILESYSTEM, Logger::SAVE});
-
-            // Crear backup seguro
-            std::string backupFile = m_filename + ".bak";
-            if (std::rename(tmpFile.c_str(), backupFile.c_str()) != 0)
+            if (ec)
             {
-                Logger::logger.log("Failed to move temporary wallet to backup file. Manual intervention required.", Logger::FATAL, {Logger::FILESYSTEM, Logger::SAVE});
-                std::remove(tmpFile.c_str());
-                return WALLET_FILE_CORRUPTED;
+                Logger::logger.log(
+                    "No se pudo crear el backup del wallet: " + ec.message(),
+                    Logger::ERROR,
+                    {Logger::FILESYSTEM, Logger::SAVE});
+                // No retornamos aún, solo avisamos. Puede seguir guardando.
             }
-
-            return WALLET_FILE_CORRUPTED;
         }
 
-        return SUCCESS;
-    }
-    catch (const std::exception &e)
-    {
-        Logger::logger.log(std::string("Exception while saving wallet: ") + e.what(), Logger::FATAL, {Logger::FILESYSTEM, Logger::SAVE});
-        return WALLET_FILE_CORRUPTED;
-    }
-    catch (...)
-    {
-        Logger::logger.log("Unknown exception while saving wallet", Logger::FATAL, {Logger::FILESYSTEM, Logger::SAVE});
-        return WALLET_FILE_CORRUPTED;
-    }
+        // 3️⃣ Guardar el wallet normalmente
+        return WalletBackend::saveWalletJSONToDisk(unsafeToJSON(), m_filename, m_password);
 }
 
 /* Get the balance for one subwallet (error, unlocked, locked) */
