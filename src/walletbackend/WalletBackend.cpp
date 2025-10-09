@@ -113,15 +113,9 @@ WalletBackend::~WalletBackend()
 {
     try
     {
-        if (m_walletSynchronizer)
-        {
-            m_walletSynchronizer->stop();
-        }
-
         std::lock_guard<std::mutex> guard(m_saveMutex);
         if (m_daemon != nullptr)
         {
-            // ya paramos sincronizador, guardado seguro
            save();
         }
     }
