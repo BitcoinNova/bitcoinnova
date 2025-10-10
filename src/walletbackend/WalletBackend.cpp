@@ -115,7 +115,6 @@ WalletBackend::~WalletBackend()
 {
     try
     {
-        std::lock_guard<std::mutex> guard(m_saveMutex);
         if (m_daemon != nullptr)
         {
            save();
