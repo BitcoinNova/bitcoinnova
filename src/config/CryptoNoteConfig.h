@@ -210,7 +210,7 @@ namespace CryptoNote
         /* This describes how many blocks of "wiggle" room transactions have regarding
            when the outputs can be spent based on a reasonable belief that the outputs
            would unlock in the current block period */
-        const uint64_t CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS = 1;
+        const uint64_t CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS = 10;
 
         const uint64_t CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_SECONDS =
             DIFFICULTY_TARGET * CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS;
