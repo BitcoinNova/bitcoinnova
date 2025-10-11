@@ -7,7 +7,9 @@
 #pragma once
 
 #include <string>
+
 #include "db/dbformat.h"
+#include "file/readahead_file_info.h"
 #include "rocksdb/comparator.h"
 #include "rocksdb/iterator.h"
 #include "rocksdb/status.h"
@@ -17,9 +19,15 @@ namespace ROCKSDB_NAMESPACE {
 
 class PinnedIteratorsManager;
 
+enum class IterBoundCheck : char {
+  kUnknown = 0,
+  kOutOfBound,
+  kInbound,
+};
+
 struct IterateResult {
   Slice key;
-  bool may_be_out_of_upper_bound;
+  IterBoundCheck bound_check_result = IterBoundCheck::kUnknown;
   // If false, PrepareValue() needs to be called before value().
   bool value_prepared = true;
 };
@@ -69,7 +77,7 @@ class InternalIteratorBase : public Cleanable {
 
   // Moves to the next entry in the source, and return result. Iterator
   // implementation should override this method to help methods inline better,
-  // or when MayBeOutOfUpperBound() is non-trivial.
+  // or when UpperBoundCheckResult() is non-trivial.
   // REQUIRES: Valid()
   virtual bool NextAndGetResult(IterateResult* result) {
     Next();
@@ -77,11 +85,11 @@ class InternalIteratorBase : public Cleanable {
     if (is_valid) {
       result->key = key();
       // Default may_be_out_of_upper_bound to true to avoid unnecessary virtual
-      // call. If an implementation has non-trivial MayBeOutOfUpperBound(),
+      // call. If an implementation has non-trivial UpperBoundCheckResult(),
       // it should also override NextAndGetResult().
-      result->may_be_out_of_upper_bound = true;
+      result->bound_check_result = IterBoundCheck::kUnknown;
       result->value_prepared = false;
-      assert(MayBeOutOfUpperBound());
+      assert(UpperBoundCheckResult() != IterBoundCheck::kOutOfBound);
     }
     return is_valid;
   }
@@ -126,19 +134,17 @@ class InternalIteratorBase : public Cleanable {
   // REQUIRES: Valid()
   virtual bool PrepareValue() { return true; }
 
-  // True if the iterator is invalidated because it reached a key that is above
-  // the iterator upper bound. Used by LevelIterator to decide whether it should
-  // stop or move on to the next file.
-  // Important: if iterator reached the end of the file without encountering any
-  // keys above the upper bound, IsOutOfBound() must return false.
-  virtual bool IsOutOfBound() { return false; }
-
   // Keys return from this iterator can be smaller than iterate_lower_bound.
   virtual bool MayBeOutOfLowerBound() { return true; }
 
-  // Keys return from this iterator can be larger or equal to
-  // iterate_upper_bound.
-  virtual bool MayBeOutOfUpperBound() { return true; }
+  // If the iterator has checked the key against iterate_upper_bound, returns
+  // the result here. The function can be used by user of the iterator to skip
+  // their own checks. If Valid() = true, IterBoundCheck::kUnknown is always
+  // a valid value. If Valid() = false, IterBoundCheck::kOutOfBound indicates
+  // that the iterator is filtered out by upper bound checks.
+  virtual IterBoundCheck UpperBoundCheckResult() {
+    return IterBoundCheck::kUnknown;
+  }
 
   // Pass the PinnedIteratorsManager to the Iterator, most Iterators don't
   // communicate with PinnedIteratorsManager so default implementation is no-op
@@ -167,6 +173,18 @@ class InternalIteratorBase : public Cleanable {
   virtual Status GetProperty(std::string /*prop_name*/, std::string* /*prop*/) {
     return Status::NotSupported("");
   }
+
+  // When iterator moves from one file to another file at same level, new file's
+  // readahead state (details of last block read) is updated with previous
+  // file's readahead state. This way internal readahead_size of Prefetch Buffer
+  // doesn't start from scratch and can fall back to 8KB with no prefetch if
+  // reads are not sequential.
+  //
+  // Default implementation is no-op and its implemented by iterators.
+  virtual void GetReadaheadState(ReadaheadFileInfo* /*readahead_file_info*/) {}
+
+  // Default implementation is no-op and its implemented by iterators.
+  virtual void SetReadaheadState(ReadaheadFileInfo* /*readahead_file_info*/) {}
 
  protected:
   void SeekForPrevImpl(const Slice& target, const Comparator* cmp) {

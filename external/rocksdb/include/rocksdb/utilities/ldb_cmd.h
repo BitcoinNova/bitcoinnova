@@ -32,6 +32,7 @@ class LDBCommand {
  public:
   // Command-line arguments
   static const std::string ARG_ENV_URI;
+  static const std::string ARG_FS_URI;
   static const std::string ARG_DB;
   static const std::string ARG_PATH;
   static const std::string ARG_SECONDARY_PATH;
@@ -78,13 +79,17 @@ class LDBCommand {
           SelectCommand);
 
   static LDBCommand* InitFromCmdLineArgs(
-      int argc, char** argv, const Options& options,
+      int argc, char const* const* argv, const Options& options,
       const LDBOptions& ldb_options,
       const std::vector<ColumnFamilyDescriptor>* column_families);
 
   bool ValidateCmdLineOptions();
 
-  virtual Options PrepareOptionsForOpenDB();
+  virtual void PrepareOptions();
+
+  virtual void OverrideBaseOptions();
+
+  virtual void OverrideBaseCFOptions(ColumnFamilyOptions* cf_opts);
 
   virtual void SetDBOptions(Options options) { options_ = options; }
 
@@ -133,6 +138,7 @@ class LDBCommand {
  protected:
   LDBCommandExecuteResult exec_state_;
   std::string env_uri_;
+  std::string fs_uri_;
   std::string db_path_;
   // If empty, open DB as primary. If non-empty, open the DB as secondary
   // with this secondary path. When running against a database opened by
@@ -269,11 +275,13 @@ class LDBCommand {
 
 class LDBCommandRunner {
  public:
-  static void PrintHelp(const LDBOptions& ldb_options, const char* exec_name);
+  static void PrintHelp(const LDBOptions& ldb_options, const char* exec_name,
+                        bool to_stderr = true);
 
   // Returns the status code to return. 0 is no error.
   static int RunCommand(
-      int argc, char** argv, Options options, const LDBOptions& ldb_options,
+      int argc, char const* const* argv, Options options,
+      const LDBOptions& ldb_options,
       const std::vector<ColumnFamilyDescriptor>* column_families);
 };
 

@@ -53,7 +53,9 @@ CuckooTableBuilder::CuckooTableBuilder(
     const Comparator* user_comparator, uint32_t cuckoo_block_size,
     bool use_module_hash, bool identity_as_first_hash,
     uint64_t (*get_slice_hash)(const Slice&, uint32_t, uint64_t),
-    uint32_t column_family_id, const std::string& column_family_name)
+    uint32_t column_family_id, const std::string& column_family_name,
+    const std::string& db_id, const std::string& db_session_id,
+    uint64_t file_number)
     : num_hash_func_(2),
       file_(file),
       max_hash_table_ratio_(max_hash_table_ratio),
@@ -79,6 +81,11 @@ CuckooTableBuilder::CuckooTableBuilder(
   properties_.filter_size = 0;
   properties_.column_family_id = column_family_id;
   properties_.column_family_name = column_family_name;
+  properties_.db_id = db_id;
+  properties_.db_session_id = db_session_id;
+  properties_.orig_file_number = file_number;
+  status_.PermitUncheckedError();
+  io_status_.PermitUncheckedError();
 }
 
 void CuckooTableBuilder::Add(const Slice& key, const Slice& value) {
@@ -87,8 +94,11 @@ void CuckooTableBuilder::Add(const Slice& key, const Slice& value) {
     return;
   }
   ParsedInternalKey ikey;
-  if (!ParseInternalKey(key, &ikey)) {
-    status_ = Status::Corruption("Unable to parse key into inernal key.");
+  Status pik_status =
+      ParseInternalKey(key, &ikey, false /* log_err_key */);  // TODO
+  if (!pik_status.ok()) {
+    status_ = Status::Corruption("Unable to parse key into internal key. ",
+                                 pik_status.getState());
     return;
   }
   if (ikey.type != kTypeDeletion && ikey.type != kTypeValue) {
@@ -244,7 +254,6 @@ Status CuckooTableBuilder::Finish() {
   assert(!closed_);
   closed_ = true;
   std::vector<CuckooBucket> buckets;
-  Status s;
   std::string unused_bucket;
   if (num_entries_ > 0) {
     // Calculate the real hash size if module hash is enabled.
@@ -372,7 +381,7 @@ Status CuckooTableBuilder::Finish() {
     return status_;
   }
 
-  meta_index_builder.Add(kPropertiesBlock, property_block_handle);
+  meta_index_builder.Add(kPropertiesBlockName, property_block_handle);
   Slice meta_index_block = meta_index_builder.Finish();
 
   BlockHandle meta_index_block_handle;
@@ -384,12 +393,10 @@ Status CuckooTableBuilder::Finish() {
     return status_;
   }
 
-  Footer footer(kCuckooTableMagicNumber, 1);
-  footer.set_metaindex_handle(meta_index_block_handle);
-  footer.set_index_handle(BlockHandle::NullBlockHandle());
-  std::string footer_encoding;
-  footer.EncodeTo(&footer_encoding);
-  io_status_ = file_->Append(footer_encoding);
+  FooterBuilder footer;
+  footer.Build(kCuckooTableMagicNumber, /* format_version */ 1, offset,
+               kNoChecksum, meta_index_block_handle);
+  io_status_ = file_->Append(footer.GetSlice());
   status_ = io_status_;
   return status_;
 }
@@ -528,7 +535,7 @@ const char* CuckooTableBuilder::GetFileChecksumFuncName() const {
   if (file_ != nullptr) {
     return file_->GetFileChecksumFuncName();
   } else {
-    return kUnknownFileChecksumFuncName.c_str();
+    return kUnknownFileChecksumFuncName;
   }
 }
 

@@ -18,27 +18,28 @@ namespace ROCKSDB_NAMESPACE {
 // Some upper and lower bound tricks played in block based table iterators
 // could be played here, but it's too complicated to reason about index
 // keys with upper or lower bound, so we skip it for simplicity.
-class ParititionedIndexIterator : public InternalIteratorBase<IndexValue> {
+class PartitionedIndexIterator : public InternalIteratorBase<IndexValue> {
   // compaction_readahead_size: its value will only be used if for_compaction =
   // true
  public:
-  ParititionedIndexIterator(
+  PartitionedIndexIterator(
       const BlockBasedTable* table, const ReadOptions& read_options,
       const InternalKeyComparator& icomp,
       std::unique_ptr<InternalIteratorBase<IndexValue>>&& index_iter,
       TableReaderCaller caller, size_t compaction_readahead_size = 0)
-      : table_(table),
+      : index_iter_(std::move(index_iter)),
+        table_(table),
         read_options_(read_options),
 #ifndef NDEBUG
         icomp_(icomp),
 #endif
         user_comparator_(icomp.user_comparator()),
-        index_iter_(std::move(index_iter)),
         block_iter_points_to_real_block_(false),
         lookup_context_(caller),
-        block_prefetcher_(compaction_readahead_size) {}
+        block_prefetcher_(compaction_readahead_size) {
+  }
 
-  ~ParititionedIndexIterator() {}
+  ~PartitionedIndexIterator() override {}
 
   void Seek(const Slice& target) override;
   void SeekForPrev(const Slice&) override {
@@ -78,18 +79,10 @@ class ParititionedIndexIterator : public InternalIteratorBase<IndexValue> {
       return Status::OK();
     }
   }
-
-  // Whether iterator invalidated for being out of bound.
-  bool IsOutOfBound() override {
-    // Shoulldn't be called
-    assert(false);
-    return false;
-  }
-
-  inline bool MayBeOutOfUpperBound() override {
+  inline IterBoundCheck UpperBoundCheckResult() override {
     // Shouldn't be called.
     assert(false);
-    return true;
+    return IterBoundCheck::kUnknown;
   }
   void SetPinnedItersMgr(PinnedIteratorsManager*) override {
     // Shouldn't be called.
@@ -121,6 +114,23 @@ class ParititionedIndexIterator : public InternalIteratorBase<IndexValue> {
     }
   }
 
+  void GetReadaheadState(ReadaheadFileInfo* readahead_file_info) override {
+    if (block_prefetcher_.prefetch_buffer() != nullptr &&
+        read_options_.adaptive_readahead) {
+      block_prefetcher_.prefetch_buffer()->GetReadaheadState(
+          &(readahead_file_info->index_block_readahead_info));
+    }
+  }
+
+  void SetReadaheadState(ReadaheadFileInfo* readahead_file_info) override {
+    if (read_options_.adaptive_readahead) {
+      block_prefetcher_.SetReadaheadState(
+          &(readahead_file_info->index_block_readahead_info));
+    }
+  }
+
+  std::unique_ptr<InternalIteratorBase<IndexValue>> index_iter_;
+
  private:
   friend class BlockBasedTableReaderTestVerifyChecksum_ChecksumMismatch_Test;
   const BlockBasedTable* table_;
@@ -129,7 +139,6 @@ class ParititionedIndexIterator : public InternalIteratorBase<IndexValue> {
   const InternalKeyComparator& icomp_;
 #endif
   UserComparatorWrapper user_comparator_;
-  std::unique_ptr<InternalIteratorBase<IndexValue>> index_iter_;
   IndexBlockIter block_iter_;
 
   // True if block_iter_ is initialized and points to the same block
