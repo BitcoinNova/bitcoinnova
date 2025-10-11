@@ -765,6 +765,10 @@ Error WalletBackend::unsafeSave() const
 
         // 3️⃣ Guardar el wallet normalmente
         return WalletBackend::saveWalletJSONToDisk(unsafeToJSON(), m_filename, m_password);
+        if (m_walletSynchronizer)
+        {
+            m_walletSynchronizer->stop();
+        }
 }
 
 /* Get the balance for one subwallet (error, unlocked, locked) */
