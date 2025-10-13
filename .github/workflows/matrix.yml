@@ -91,28 +91,25 @@ jobs:
           cp ${TARGETS} BitcoinNova-${TAG}/
           cp ../../LICENSE BitcoinNova-${TAG}/
           tar cvfz BitcoinNova-${TAG}-${LABEL}.tar.gz BitcoinNova-${TAG}/
-          echo ::set-output name=binary_path::BitcoinNova-${TAG}
-          echo ::set-output name=artifact_name::BitcoinNova-${TAG}-${LABEL}
-          echo ::set-output name=file_name::BitcoinNova-${TAG}-${LABEL}.tar.gz
      
       # Upload to GH Release
       - name: Upload to GH Release
         if: github.event_name == 'release' && matrix.deployable
-        uses: actions/upload-release-asset@v1
+        uses: tanyagray/action-upload-release-asset@v1.1.3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./build/src/${{ steps.before_deploy.outputs.file_name }}
-          asset_name: ${{ steps.before_deploy.outputs.file_name }}
+          asset_path: ./build/src/BitcoinNova-${{ github.event.release.tag_name }}-${{ env.LABEL }}.tar.gz
+          asset_name: BitcoinNova-${{ github.event.release.tag_name }}-${{ env.LABEL }}.tar.gz
           asset_content_type: application/gzip
 
       # Upload to GH Actions Artifacts
       - name: Upload To GH Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.before_deploy.outputs.artifact_name }}
-          path: ./build/src/${{ steps.before_deploy.outputs.binary_path }}
+          name: BitcoinNova-${{ github.sha }}-${{ env.LABEL }}
+          path: ./build/src/BitcoinNova-${{ github.sha }}
 
 
 
