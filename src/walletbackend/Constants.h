@@ -34,7 +34,7 @@ namespace Constants
     const uint16_t WALLET_FILE_FORMAT_VERSION = 0;
 
     /* How large should the m_lastKnownBlockHashes container be */
-    const size_t LAST_KNOWN_BLOCK_HASHES_SIZE = 0;
+    const size_t LAST_KNOWN_BLOCK_HASHES_SIZE = 1;
 
     /* Save a block hash checkpoint every BLOCK_HASH_CHECKPOINTS_INTERVAL
        blocks */
