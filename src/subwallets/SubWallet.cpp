@@ -87,46 +87,43 @@ std::tuple<Crypto::KeyImage, Crypto::SecretKey> SubWallet::getTxInputKeyImage(
 
 void SubWallet::storeTransactionInput(const WalletTypes::TransactionInput input, const bool isViewWallet)
 {
-    /* Can't create a key image with a view wallet - but we still store the
-       input so we can calculate the balance */
     if (!isViewWallet)
     {
-        /* Find the input in the unconfirmed incoming amounts - inputs we
-           sent ourselves, that are now returning as change. Remove from
-           vector if found. */
         const auto it = std::remove_if(
-            m_unconfirmedIncomingAmounts.begin(), m_unconfirmedIncomingAmounts.end(), [&input](const auto storedInput) {
-                return storedInput.key == input.key;
-            });
+            m_unconfirmedIncomingAmounts.begin(), m_unconfirmedIncomingAmounts.end(),
+            [&input](const auto &storedInput) { return storedInput.key == input.key; });
+
         if (it != m_unconfirmedIncomingAmounts.end())
         {
             m_unconfirmedIncomingAmounts.erase(it, m_unconfirmedIncomingAmounts.end());
         }
     }
 
-    auto it = std::find_if(m_unspentInputs.begin(), m_unspentInputs.end(), [&input](const auto x) {
-        return x.key == input.key;
-    });
 
-    /* Ensure we don't add the input twice */
-    if (it == m_unspentInputs.end())
+    auto alreadyExists = [&](const auto &vec)
     {
-        m_unspentInputs.push_back(input);
-    }
-    else
+        return std::any_of(vec.begin(), vec.end(), [&input](const auto &x) { return x.keyImage == input.keyImage; });
+    };
+
+    if (alreadyExists(m_unspentInputs) || alreadyExists(m_lockedInputs) || alreadyExists(m_spentInputs))
     {
         std::stringstream stream;
-
-        stream << "Input with key " << input.key
-               << " being stored is already present in unspent inputs vector.";
-
-        Logger::logger.log(
-            stream.str(),
-            Logger::WARNING,
-            { Logger::SYNC }
-        );
+        stream << "Ignoring duplicate key image: " << Common::podToHex(input.keyImage)
+               << " (already present in unspent/locked/spent)";
+        Logger::logger.log(stream.str(), Logger::DEBUG, {Logger::SYNC});
+        return;
     }
+
+
+    m_unspentInputs.push_back(input);
+
+    std::stringstream stream;
+    stream << "Stored new transaction input " << Common::podToHex(input.keyImage)
+           << " amount: " << input.amount
+           << " blockHeight: " << input.blockHeight;
+    Logger::logger.log(stream.str(), Logger::DEBUG, {Logger::SYNC});
 }
+
 
 std::tuple<uint64_t, uint64_t> SubWallet::getBalance(const uint64_t currentHeight) const
 {
@@ -190,77 +187,60 @@ Crypto::SecretKey SubWallet::privateSpendKey() const
 
 void SubWallet::markInputAsSpent(const Crypto::KeyImage keyImage, const uint64_t spendHeight)
 {
-    /* Find the input */
-    auto it = std::find_if(m_unspentInputs.begin(), m_unspentInputs.end(), [&keyImage](const auto x) {
-        return x.keyImage == keyImage;
-    });
+    
+    auto removeDuplicate = [&](auto &vec, const std::string &vecName) {
+        auto it = std::remove_if(vec.begin(), vec.end(), [&keyImage, &vecName](const auto &x) {
+            if (x.keyImage == keyImage)
+            {
+                std::stringstream stream;
+                stream << "Removing duplicate key image " << Common::podToHex(keyImage)
+                       << " found in " << vecName << " before marking as spent.";
+                Logger::logger.log(stream.str(), Logger::WARNING, {Logger::SYNC});
+                return true;
+            }
+            return false;
+        });
+        if (it != vec.end()) vec.erase(it, vec.end());
+    };
 
-    bool inSpent = std::find_if(m_spentInputs.begin(), m_spentInputs.end(), [&keyImage](const auto x) {
-        return x.keyImage == keyImage;
-    }) != m_spentInputs.end();
+    removeDuplicate(m_lockedInputs, "lockedInputs");
+    removeDuplicate(m_spentInputs, "spentInputs");
 
-    if (inSpent)
-    {
-        std::stringstream stream;
-
-        stream << "Input with key image " << keyImage
-               << " being marked as spent is already present in spent inputs vector.";
-
-        Logger::logger.log(
-            stream.str(),
-            Logger::WARNING,
-            { Logger::SYNC }
-        );
-    }
+    auto it = std::find_if(m_unspentInputs.begin(), m_unspentInputs.end(),
+                           [&keyImage](const auto &x) { return x.keyImage == keyImage; });
 
     if (it != m_unspentInputs.end())
     {
-        /* Set the spend height */
         it->spendHeight = spendHeight;
-
-
-        /* Ensure we don't add the input twice */
-        if (!inSpent)
-        {
-            /* Add to the spent inputs vector */
-            m_spentInputs.push_back(*it);
-        }
-
-        /* Remove from the unspent vector */
+        m_spentInputs.push_back(*it);
         m_unspentInputs.erase(it);
 
+        std::stringstream stream;
+        stream << "Marked input " << Common::podToHex(keyImage)
+               << " as spent at height " << spendHeight;
+        Logger::logger.log(stream.str(), Logger::DEBUG, {Logger::SYNC});
         return;
     }
 
-    /* Didn't find it, lets try in the locked inputs */
-    it = std::find_if(
-        m_lockedInputs.begin(), m_lockedInputs.end(), [&keyImage](const auto x) { return x.keyImage == keyImage; });
+    it = std::find_if(m_lockedInputs.begin(), m_lockedInputs.end(),
+                      [&keyImage](const auto &x) { return x.keyImage == keyImage; });
+
     if (it != m_lockedInputs.end())
     {
-        /* Set the spend height */
         it->spendHeight = spendHeight;
-
-        if (!inSpent)
-        {
-            /* Add to the spent inputs vector */
-            m_spentInputs.push_back(*it);
-        }
-
-        /* Remove from the locked vector */
+        m_spentInputs.push_back(*it);
         m_lockedInputs.erase(it);
 
+        Logger::logger.log(
+            "Marked locked input as spent: " + Common::podToHex(keyImage),
+            Logger::DEBUG, {Logger::SYNC});
         return;
     }
 
     std::stringstream stream;
-
-    stream << "Could not find key image " << keyImage << " to remove. Ignoring.";
-
-    Logger::logger.log(
-        stream.str(),
-        Logger::WARNING,
-        { Logger::SYNC }
-    );
+    stream << "Warning: Tried to mark missing key image " << Common::podToHex(keyImage)
+           << " as spent, but it was not found in unspent or locked inputs.";
+    Logger::logger.log(stream.str(), Logger::WARNING, {Logger::SYNC});
 }
 
 void SubWallet::markInputAsLocked(const Crypto::KeyImage keyImage)

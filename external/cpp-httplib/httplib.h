@@ -14,6 +14,11 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif //_CRT_SECURE_NO_WARNINGS
 
+#ifdef _WIN32
+#pragma warning(push)
+#pragma warning(disable : 4244)
+#endif
+
 #ifndef _CRT_NONSTDC_NO_DEPRECATE
 #define _CRT_NONSTDC_NO_DEPRECATE
 #endif //_CRT_NONSTDC_NO_DEPRECATE
@@ -1157,7 +1162,7 @@ inline std::string encode_url(const std::string& s)
 {
     std::string result;
 
-    for (auto i = 0; s[i]; i++) {
+    for (size_t i = 0; i < s.size(); ++i) {
         switch (s[i]) {
         case ' ':  result += "%20"; break;
         case '+':  result += "%2B"; break;
@@ -1170,7 +1175,7 @@ inline std::string encode_url(const std::string& s)
             if (c >= 0x80) {
                 result += '%';
                 char hex[4];
-                size_t len = snprintf(hex, sizeof(hex) - 1, "%02X", c);
+                size_t len = snprintf(hex, sizeof(hex), "%02X", c);
                 assert(len == 2);
                 result.append(hex, len);
             } else {
@@ -1206,7 +1211,7 @@ inline bool from_hex_to_i(const std::string& s, size_t i, size_t cnt, int& val)
 
     val = 0;
     for (; cnt; i++, cnt--) {
-        if (!s[i]) {
+        if (i >= s.size()) {
             return false;
         }
         int v = 0;
@@ -1638,7 +1643,7 @@ inline void Stream::write_format(const char* fmt, const Args& ...args)
 #if defined(_MSC_VER) && _MSC_VER < 1900
     auto n = _snprintf_s(buf, bufsiz, bufsiz - 1, fmt, args...);
 #else
-    auto n = snprintf(buf, bufsiz - 1, fmt, args...);
+    auto n = snprintf(buf, bufsiz, fmt, args...);
 #endif
     if (n > 0) {
         if (n >= bufsiz - 1) {
@@ -1649,7 +1654,7 @@ inline void Stream::write_format(const char* fmt, const Args& ...args)
 #if defined(_MSC_VER) && _MSC_VER < 1900
                 n = _snprintf_s(&glowable_buf[0], glowable_buf.size(), glowable_buf.size() - 1, fmt, args...);
 #else
-                n = snprintf(&glowable_buf[0], glowable_buf.size() - 1, fmt, args...);
+                n = snprintf(&glowable_buf[0], glowable_buf.size(), fmt, args...);
 #endif
             }
             write(&glowable_buf[0], n);
@@ -2962,6 +2967,10 @@ inline bool SSLClient::read_socket(socket_t sock, Request& req, Response& res)
 #endif
 
 } // namespace httplib
+
+#ifdef _WIN32
+#pragma warning(pop)
+#endif
 
 #endif //CPPHTTPLIB_HTTPLIB_H
 

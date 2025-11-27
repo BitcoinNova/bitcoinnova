@@ -42,7 +42,7 @@ namespace Constants
 
     /* The amount of blocks since an input has been spent that we remove it
        from the container */
-    const uint64_t PRUNE_SPENT_INPUTS_INTERVAL = 2;
+    const uint64_t PRUNE_SPENT_INPUTS_INTERVAL = 2000000;
     /* When we get the global indexes, we pass in a range of blocks, to obscure
        which transactions we are interested in - the ones that belong to us.
        To do this, we get the global indexes for all transactions in a range.

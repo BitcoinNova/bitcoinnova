@@ -157,7 +157,10 @@ void WalletSynchronizer::mainLoop()
             {
                 const auto [block, ourInputs, arrivalIndex] = m_processedBlocks.top_unsafe();
                 completeBlockProcessing(block, ourInputs);
-                m_processedBlocks.pop_unsafe();
+                if (!m_processedBlocks.empty_unsafe() && !m_shouldStop)
+                {
+                    m_processedBlocks.pop_unsafe();
+                }
             }
         }
 
@@ -373,25 +376,16 @@ void WalletSynchronizer::completeBlockProcessing(
 
     /* The input has been spent, discard the key image so we
        don't double spend it */
-        for (const auto &[publicKey, keyImage] : blockScanInfo.keyImagesToMarkSpent)
-        {
-            const uint64_t range = 5;
-            const uint64_t baseHeight = static_cast<uint64_t>(block.blockHeight);
-        
-            std::stringstream stream;
-            stream << "Marking key image: " << keyImage
-                   << " as spent from height " << (baseHeight - range)
-                   << " to " << (baseHeight + range);
-            Logger::logger.log(stream.str(), Logger::INFO, {Logger::SYNC});
-        
-            // Marca como gastado desde baseHeight - 5 hasta baseHeight + 5
-            for (uint64_t height = std::max<uint64_t>(0, baseHeight - range);
-                 height <= baseHeight + range;
-                 ++height)
-            {
-                m_subWallets->markInputAsSpent(keyImage, publicKey, static_cast<uint64_t>(height));
-            }
-        }
+    for (const auto &[publicKey, keyImage] : blockScanInfo.keyImagesToMarkSpent)
+    {
+        std::stringstream stream;
+
+        stream << "Marking key image: " << keyImage << " as spent";
+
+        Logger::logger.log(stream.str(), Logger::INFO, {Logger::SYNC});
+
+        m_subWallets->markInputAsSpent(keyImage, publicKey, block.blockHeight);
+    }
 
     /* Make sure to do this at the end, once the transactions are fully
        processed! Otherwise, we could miss a transaction depending upon
@@ -506,6 +500,21 @@ std::tuple<std::optional<WalletTypes::Transaction>, std::vector<std::tuple<Crypt
 
         if (found)
         {
+            {
+                std::lock_guard<std::mutex> lock(m_processedKeyImagesMutex);
+
+                if (m_processedKeyImages.count(input.keyImage))
+                {
+                    Logger::logger.log(
+                        "Ignoring duplicate key image: " + Common::podToHex(input.keyImage),
+                        Logger::DEBUG,
+                        {Logger::SYNC});
+                    continue;
+                }
+
+                m_processedKeyImages.insert(input.keyImage);
+            }
+
             transfers[publicSpendKey] -= input.amount;
             spentKeyImages.emplace_back(publicSpendKey, input.keyImage);
         }
@@ -730,6 +739,12 @@ void WalletSynchronizer::stop()
             thread.join();
         }
     }
+
+    {
+    std::lock_guard<std::mutex> lock(m_processedKeyImagesMutex);
+    m_processedKeyImages.clear();
+    }
+
 }
 
 void WalletSynchronizer::reset(uint64_t startHeight)

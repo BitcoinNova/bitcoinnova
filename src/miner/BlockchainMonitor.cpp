@@ -3,6 +3,10 @@
 //
 // Please see the included LICENSE file for more information.
 
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0A00  // Windows 10
+#endif
+
 #include "BlockchainMonitor.h"
 
 #include "common/StringTools.h"
