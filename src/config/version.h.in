@@ -4,11 +4,11 @@
 #define PROJECT_NAME "BitcoinNova"
 #define PROJECT_BUILDNAME "Prometheus"
 #define PROJECT_SITE "https://bitcoinnova.github.io"
-#define PROJECT_COPYRIGHT "Copyright 2018-2024, The Bitcoin Nova Developers"
+#define PROJECT_COPYRIGHT "Copyright 2018-2025, The Bitcoin Nova Developers"
 #define APP_VER_MAJOR 0
 #define APP_VER_MINOR 28
 #define APP_VER_REV 4
-#define APP_VER_BUILD 1305
+#define APP_VER_BUILD 2025
 
 #define BUILD_COMMIT_ID "@VERSION@"
 #define PROJECT_VERSION STR(APP_VER_MAJOR) "." STR(APP_VER_MINOR) "." STR(APP_VER_REV)

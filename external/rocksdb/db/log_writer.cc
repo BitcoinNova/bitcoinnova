@@ -33,7 +33,7 @@ Writer::Writer(std::unique_ptr<WritableFileWriter>&& dest, uint64_t log_number,
 
 Writer::~Writer() {
   if (dest_) {
-    WriteBuffer();
+    WriteBuffer().PermitUncheckedError();
   }
 }
 
@@ -145,14 +145,17 @@ IOStatus Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
   }
 
   // Compute the crc of the record type and the payload.
-  crc = crc32c::Extend(crc, ptr, n);
+  uint32_t payload_crc = crc32c::Value(ptr, n);
+  crc = crc32c::Crc32cCombine(crc, payload_crc, n);
   crc = crc32c::Mask(crc);  // Adjust for storage
+  TEST_SYNC_POINT_CALLBACK("LogWriter::EmitPhysicalRecord:BeforeEncodeChecksum",
+                           &crc);
   EncodeFixed32(buf, crc);
 
   // Write the header and the payload
   IOStatus s = dest_->Append(Slice(buf, header_size));
   if (s.ok()) {
-    s = dest_->Append(Slice(ptr, n));
+    s = dest_->Append(Slice(ptr, n), payload_crc);
   }
   block_offset_ += header_size + n;
   return s;

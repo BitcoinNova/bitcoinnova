@@ -344,10 +344,10 @@ class WalletBackend
 
     /* Prepared, unsent transactions. */
     std::unordered_map<Crypto::Hash, WalletTypes::PreparedTransactionInfo> m_preparedTransactions;
-    
-    /* Ensure we only send one transaction in parallel, otherwise txs will likely fail. */
-    std::mutex m_transactionMutex;
 
+    /* Ensure we only send one transaction in parallel, otherwise txs will likely fail. */ 
+    std::mutex m_transactionMutex; 
+    
     // Protege operaciones de guardado y serialización del wallet
     mutable std::mutex m_saveMutex;
 };

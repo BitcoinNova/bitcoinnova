@@ -412,25 +412,33 @@ void SubWallets::storeTransactionInput(
     const Crypto::PublicKey publicSpendKey,
     const WalletTypes::TransactionInput input)
 {
+    throwIfViewWallet();
     std::scoped_lock lock(m_mutex);
 
     const auto it = m_subWallets.find(publicSpendKey);
-
-    /* Check it exists */
-    if (it != m_subWallets.end())
+    if (it == m_subWallets.end())
     {
-        if (!m_isViewWallet)
-        {
-            /* Add the new key image to the store, so we can detect when we
-               spent a key image easily */
-            m_keyImageOwners[input.keyImage] = publicSpendKey;
-        }
-
-        /* If we have a view wallet, don't attempt to derive the key image */
-        return it->second.storeTransactionInput(input, m_isViewWallet);
+        throw std::runtime_error("Subwallet not found!");
     }
 
-    throw std::runtime_error("Subwallet not found!");
+    auto ownerIt = m_keyImageOwners.find(input.keyImage);
+    if (ownerIt != m_keyImageOwners.end())
+    {
+        if (ownerIt->second != publicSpendKey)
+        {
+            Logger::logger.log(
+                "Ignoring input because keyImage already belongs to another subwallet: " + Common::podToHex(input.keyImage),
+                Logger::DEBUG, {Logger::SYNC});
+            return;
+        }
+    }
+    else
+    {
+        
+        m_keyImageOwners[input.keyImage] = publicSpendKey;
+    }
+
+    it->second.storeTransactionInput(input, m_isViewWallet);
 }
 
 std::tuple<bool, Crypto::PublicKey> SubWallets::getKeyImageOwner(const Crypto::KeyImage keyImage) const
@@ -744,18 +752,25 @@ std::tuple<uint64_t, uint64_t> SubWallets::getBalance(
 }
 
 /* Mark a key image as spent, no longer can be used in transactions */
-void SubWallets::markInputAsSpent(
-    const Crypto::KeyImage keyImage,
-    const Crypto::PublicKey publicKey,
-    const uint64_t spendHeight)
+void SubWallets::markInputAsSpent(const Crypto::KeyImage keyImage, const Crypto::PublicKey publicKey, const uint64_t spendHeight)
 {
-    /* A view wallet can't generate key images, so can't determine when an
-       input is spent */
     throwIfViewWallet();
-
     std::scoped_lock lock(m_mutex);
 
-    m_subWallets.at(publicKey).markInputAsSpent(keyImage, spendHeight);
+    const auto it = m_subWallets.find(publicKey);
+    if (it == m_subWallets.end())
+    {
+        Logger::logger.log("markInputAsSpent: subwallet not found", Logger::WARNING, {Logger::SYNC});
+        return;
+    }
+
+    it->second.markInputAsSpent(keyImage, spendHeight);
+
+    auto ownerIt = m_keyImageOwners.find(keyImage);
+    if (ownerIt != m_keyImageOwners.end())
+    {
+        m_keyImageOwners.erase(ownerIt);
+    }
 }
 
 /* Mark a key image as locked, can no longer be used in transactions till it

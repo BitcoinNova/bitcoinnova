@@ -34,7 +34,7 @@ namespace Constants
     const uint16_t WALLET_FILE_FORMAT_VERSION = 0;
 
     /* How large should the m_lastKnownBlockHashes container be */
-    const size_t LAST_KNOWN_BLOCK_HASHES_SIZE = 50;
+    const size_t LAST_KNOWN_BLOCK_HASHES_SIZE = 1;
 
     /* Save a block hash checkpoint every BLOCK_HASH_CHECKPOINTS_INTERVAL
        blocks */
@@ -42,7 +42,7 @@ namespace Constants
 
     /* The amount of blocks since an input has been spent that we remove it
        from the container */
-    const uint64_t PRUNE_SPENT_INPUTS_INTERVAL = 2;
+    const uint64_t PRUNE_SPENT_INPUTS_INTERVAL = 2000000;
     /* When we get the global indexes, we pass in a range of blocks, to obscure
        which transactions we are interested in - the ones that belong to us.
        To do this, we get the global indexes for all transactions in a range.

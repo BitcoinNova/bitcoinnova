@@ -26,51 +26,77 @@ while getopts ':ch' OPTION; do
   esac
 done
 
-if [ -z $CLANG_FORMAT_DIFF ]
-then
-CLANG_FORMAT_DIFF="clang-format-diff.py"
-fi
+REPO_ROOT="$(git rev-parse --show-toplevel)"
 
-# Check clang-format-diff.py
-if ! which $CLANG_FORMAT_DIFF &> /dev/null
-then
-  if [ ! -f ./clang-format-diff.py ]
-  then
-    echo "You didn't have clang-format-diff.py and/or clang-format available in your computer!"
-    echo "You can download clang-format-diff.py by running: "
-    echo "    curl --location http://goo.gl/iUW1u2 -o ${CLANG_FORMAT_DIFF}"
-    echo "You can download clang-format by running:"
-    echo "    brew install clang-format"
-    echo "  Or"
-    echo "    apt install clang-format"
-    echo "  This might work too:"
-    echo "    yum install git-clang-format"
-    echo "Then, move both files (i.e. ${CLANG_FORMAT_DIFF} and clang-format) to some directory within PATH=${PATH}"
-    echo "and make sure ${CLANG_FORMAT_DIFF} is executable."
-    exit 128
+if [ "$CLANG_FORMAT_DIFF" ]; then
+  echo "Note: CLANG_FORMAT_DIFF='$CLANG_FORMAT_DIFF'"
+  # Dry run to confirm dependencies like argparse
+  if $CLANG_FORMAT_DIFF --help >/dev/null < /dev/null; then
+    true #Good
   else
-    if [ -x ./clang-format-diff.py ]
-    then
-      PATH=$PATH:.
+    exit 128
+  fi
+else
+  # First try directly executing the possibilities
+  if clang-format-diff --help &> /dev/null < /dev/null; then
+    CLANG_FORMAT_DIFF=clang-format-diff
+  elif clang-format-diff.py --help &> /dev/null < /dev/null; then
+    CLANG_FORMAT_DIFF=clang-format-diff.py
+  elif $REPO_ROOT/clang-format-diff.py --help &> /dev/null < /dev/null; then
+    CLANG_FORMAT_DIFF=$REPO_ROOT/clang-format-diff.py
+  else
+    # This probably means we need to directly invoke the interpreter.
+    # But first find clang-format-diff.py
+    if [ -f "$REPO_ROOT/clang-format-diff.py" ]; then
+      CFD_PATH="$REPO_ROOT/clang-format-diff.py"
+    elif which clang-format-diff.py &> /dev/null; then
+      CFD_PATH="$(which clang-format-diff.py)"
     else
-      CLANG_FORMAT_DIFF="python ./clang-format-diff.py"
+      echo "You didn't have clang-format-diff.py and/or clang-format available in your computer!"
+      echo "You can download clang-format-diff.py by running: "
+      echo "    curl --location https://raw.githubusercontent.com/llvm/llvm-project/main/clang/tools/clang-format/clang-format-diff.py -o ${REPO_ROOT}/clang-format-diff.py"
+      echo "You should make sure the downloaded script is not compromised."
+      echo "You can download clang-format by running:"
+      echo "    brew install clang-format"
+      echo "  Or"
+      echo "    apt install clang-format"
+      echo "  This might work too:"
+      echo "    yum install git-clang-format"
+      echo "Then make sure clang-format is available and executable from \$PATH:"
+      echo "    clang-format --version"
+      exit 128
+    fi
+    # Check argparse pre-req on interpreter, or it will fail
+    if echo import argparse | ${PYTHON:-python3}; then
+      true # Good
+    else
+      echo "To run clang-format-diff.py, we'll need the library "argparse" to be"
+      echo "installed. You can try either of the follow ways to install it:"
+      echo "  1. Manually download argparse: https://pypi.python.org/pypi/argparse"
+      echo "  2. easy_install argparse (if you have easy_install)"
+      echo "  3. pip install argparse (if you have pip)"
+      exit 129
+    fi
+    # Unfortunately, some machines have a Python2 clang-format-diff.py
+    # installed but only a Python3 interpreter installed. Unfortunately,
+    # automatic 2to3 migration is insufficient, so suggest downloading latest.
+    if grep -q "print '" "$CFD_PATH" && \
+       ${PYTHON:-python3} --version | grep -q 'ython 3'; then
+      echo "You have clang-format-diff.py for Python 2 but are using a Python 3"
+      echo "interpreter (${PYTHON:-python3})."
+      echo "You can download clang-format-diff.py for Python 3 by running: "
+      echo "    curl --location https://raw.githubusercontent.com/llvm/llvm-project/main/clang/tools/clang-format/clang-format-diff.py -o ${REPO_ROOT}/clang-format-diff.py"
+      echo "You should make sure the downloaded script is not compromised."
+      exit 130
+    fi
+    CLANG_FORMAT_DIFF="${PYTHON:-python3} $CFD_PATH"
+    # This had better work after all those checks
+    if $CLANG_FORMAT_DIFF --help >/dev/null < /dev/null; then
+      true #Good
+    else
+      exit 128
     fi
   fi
-fi
-
-# Check argparse, a library that clang-format-diff.py requires.
-python 2>/dev/null << EOF
-import argparse
-EOF
-
-if [ "$?" != 0 ]
-then
-  echo "To run clang-format-diff.py, we'll need the library "argparse" to be"
-  echo "installed. You can try either of the follow ways to install it:"
-  echo "  1. Manually download argparse: https://pypi.python.org/pypi/argparse"
-  echo "  2. easy_install argparse (if you have easy_install)"
-  echo "  3. pip install argparse (if you have pip)"
-  exit 129
 fi
 
 # TODO(kailiu) following work is not complete since we still need to figure
@@ -96,25 +122,27 @@ uncommitted_code=`git diff HEAD`
 
 # If there's no uncommitted changes, we assume user are doing post-commit
 # format check, in which case we'll try to check the modified lines vs. the
-# facebook/rocksdb.git master branch. Otherwise, we'll check format of the
+# facebook/rocksdb.git main branch. Otherwise, we'll check format of the
 # uncommitted code only.
 if [ -z "$uncommitted_code" ]
 then
   # Attempt to get name of facebook/rocksdb.git remote.
-  [ "$FORMAT_REMOTE" ] || FORMAT_REMOTE="$(git remote -v | grep 'facebook/rocksdb.git' | head -n 1 | cut -f 1)"
+  [ "$FORMAT_REMOTE" ] || FORMAT_REMOTE="$(LC_ALL=POSIX LANG=POSIX git remote -v | grep 'facebook/rocksdb.git' | head -n 1 | cut -f 1)"
   # Fall back on 'origin' if that fails
   [ "$FORMAT_REMOTE" ] || FORMAT_REMOTE=origin
-  # Use master branch from that remote
-  [ "$FORMAT_UPSTREAM" ] || FORMAT_UPSTREAM="$FORMAT_REMOTE/master"
+  # Use main branch from that remote
+  [ "$FORMAT_UPSTREAM" ] || FORMAT_UPSTREAM="$FORMAT_REMOTE/$(LC_ALL=POSIX LANG=POSIX git remote show $FORMAT_REMOTE | sed -n '/HEAD branch/s/.*: //p')"
   # Get the common ancestor with that remote branch. Everything after that
   # common ancestor would be considered the contents of a pull request, so
   # should be relevant for formatting fixes.
   FORMAT_UPSTREAM_MERGE_BASE="$(git merge-base "$FORMAT_UPSTREAM" HEAD)"
   # Get the differences
   diffs=$(git diff -U0 "$FORMAT_UPSTREAM_MERGE_BASE" | $CLANG_FORMAT_DIFF -p 1)
+  echo "Checking format of changes not yet in $FORMAT_UPSTREAM..."
 else
   # Check the format of uncommitted lines,
   diffs=$(git diff -U0 HEAD | $CLANG_FORMAT_DIFF -p 1)
+  echo "Checking format of uncommitted changes..."
 fi
 
 if [ -z "$diffs" ]
@@ -124,6 +152,10 @@ then
 elif [ $CHECK_ONLY ]
 then
   echo "Your change has unformatted code. Please run make format!"
+  if [ $VERBOSE_CHECK ]; then
+    clang-format --version
+    echo "$diffs"
+  fi
   exit 1
 fi
 

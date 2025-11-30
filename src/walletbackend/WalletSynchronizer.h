@@ -4,8 +4,11 @@
 
 #pragma once
 
+#include <atomic>
 #include <WalletTypes.h>
 #include <memory>
+#include <unordered_set>
+#include <mutex>
 #include <nigel/Nigel.h>
 #include <subwallets/SubWallets.h>
 #include <utilities/ThreadSafeDeque.h>
@@ -201,4 +204,11 @@ class WalletSynchronizer
 
     /* Stores thread ids of the block output processing threads */
     std::vector<std::thread> m_syncThreads;
+
+    std::atomic<bool> m_isProcessing{false};
+    std::condition_variable m_processingDoneCV;
+    std::mutex m_processingDoneMutex;    
+    std::atomic<size_t> m_pendingProcessedBlocks{0};
+    mutable std::mutex m_processedKeyImagesMutex;
+    mutable std::unordered_set<Crypto::KeyImage> m_processedKeyImages;
 };

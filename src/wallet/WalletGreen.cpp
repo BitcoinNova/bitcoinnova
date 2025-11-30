@@ -4738,14 +4738,13 @@ namespace CryptoNote
             const auto tx = getTransaction(input.transactionHash);
 
             /* Input is spent and is old enough to not need storing */
-            const bool oldSpentInput =
-                !unspent && tx.transaction.blockHeight + Constants::PRUNE_SPENT_INPUTS_INTERVAL < height;
+            const bool oldSpentInput = false;
 
             WalletTypes::TransactionInput newInput;
 
             /* Don't generate key image for inputs that will be discarded by
            WalletBackend */
-            if (!isViewWallet && !oldSpentInput)
+            if (!isViewWallet)
             {
                 newInput.keyImage = getKeyImage(
                     input.transactionPublicKey,

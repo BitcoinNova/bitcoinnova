@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2019, The TurtleCoin Developers
+// Copyright (c) 2018-2024, The TurtleCoin Developers
 //
 // Please see the included LICENSE file for more information.
 
@@ -6,6 +6,7 @@
 #include <walletbackend/WalletBackend.h>
 ////////////////////////////////////////
 
+#include <cstdio>
 #include "JsonHelper.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
@@ -34,6 +35,8 @@
 #include <utilities/Utilities.h>
 #include <walletbackend/Constants.h>
 #include <walletbackend/Transfer.h>
+#include <filesystem>
+namespace fs = std::filesystem;
 
 using namespace rapidjson;
 
@@ -110,12 +113,21 @@ WalletBackend::WalletBackend()
 /* Deconstructor */
 WalletBackend::~WalletBackend()
 {
-    /* Save, but only if the non default constructor was used - else things
-       will be uninitialized, and crash */
-    if (m_daemon != nullptr)
+    try
     {
-        save();
+        if (m_daemon != nullptr)
+        {
+           save();
+        }
     }
+    catch (const std::exception &e)     
+    {
+        Logger::logger.log(
+            std::string("Exception in WalletBackend destructor: ") + e.what(),
+            Logger::FATAL,
+            {Logger::FILESYSTEM, Logger::SAVE});
+    }
+    catch (...) {}
 }
 
 /* Standard Constructor */
@@ -705,14 +717,58 @@ void WalletBackend::init()
 
 Error WalletBackend::save() const
 {
-    return m_syncRAIIWrapper->pauseSynchronizerToRunFunction([this]() { return unsafeSave(); });
+    // Protege la operación de guardado desde múltiples hilos
+    std::lock_guard<std::mutex> guard(m_saveMutex);
+
+    try
+    {
+        // PauseSynchronizerToRunFunction ya pausa el sincronizador internamente
+        return m_syncRAIIWrapper->pauseSynchronizerToRunFunction(
+            [this]() { return unsafeSave(); });
+    }
+    catch (const std::exception &e)
+    {
+        Logger::logger.log(std::string("Exception during WalletBackend::save(): ") + e.what(),
+                           Logger::FATAL, {Logger::FILESYSTEM, Logger::SAVE});
+        return WALLET_FILE_CORRUPTED;
+    }
+    catch (...)
+    {
+        Logger::logger.log("Unknown exception during WalletBackend::save()", Logger::FATAL, {Logger::FILESYSTEM, Logger::SAVE});
+        return WALLET_FILE_CORRUPTED;
+    }
 }
+
 
 /* Unsafe because it doesn't lock any data structures - need to stop the
    blockchain synchronizer first (Call save()) */
+
 Error WalletBackend::unsafeSave() const
 {
-    return WalletBackend::saveWalletJSONToDisk(unsafeToJSON(), m_filename, m_password);
+        // 1️⃣ Crear ruta del archivo original
+        fs::path originalPath = m_filename;
+        fs::path backupPath = originalPath;
+        backupPath += ".bak";
+
+        // 2️⃣ Hacer backup del archivo actual (si existe)
+        if (fs::exists(originalPath))
+        {
+            std::error_code ec;
+            fs::copy_file(originalPath, backupPath, fs::copy_options::overwrite_existing, ec);
+
+            if (ec)
+            {
+                Logger::logger.log( "No se pudo crear el backup del wallet: " + ec.message(), Logger::FATAL, {Logger::FILESYSTEM, Logger::SAVE});
+                // No retornamos aún, solo avisamos. Puede seguir guardando.
+            }
+        }
+
+        // 3️⃣ Guardar el wallet normalmente
+        return WalletBackend::saveWalletJSONToDisk(unsafeToJSON(), m_filename, m_password);
+        if (m_walletSynchronizer)
+        {
+            m_walletSynchronizer->stop();
+        }
 }
 
 /* Get the balance for one subwallet (error, unlocked, locked) */

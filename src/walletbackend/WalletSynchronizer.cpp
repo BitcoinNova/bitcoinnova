@@ -157,7 +157,10 @@ void WalletSynchronizer::mainLoop()
             {
                 const auto [block, ourInputs, arrivalIndex] = m_processedBlocks.top_unsafe();
                 completeBlockProcessing(block, ourInputs);
-                m_processedBlocks.pop_unsafe();
+                if (!m_processedBlocks.empty_unsafe() && !m_shouldStop)
+                {
+                    m_processedBlocks.pop_unsafe();
+                }
             }
         }
 
@@ -497,6 +500,21 @@ std::tuple<std::optional<WalletTypes::Transaction>, std::vector<std::tuple<Crypt
 
         if (found)
         {
+            {
+                std::lock_guard<std::mutex> lock(m_processedKeyImagesMutex);
+
+                if (m_processedKeyImages.count(input.keyImage))
+                {
+                    Logger::logger.log(
+                        "Ignoring duplicate key image: " + Common::podToHex(input.keyImage),
+                        Logger::DEBUG,
+                        {Logger::SYNC});
+                    continue;
+                }
+
+                m_processedKeyImages.insert(input.keyImage);
+            }
+
             transfers[publicSpendKey] -= input.amount;
             spentKeyImages.emplace_back(publicSpendKey, input.keyImage);
         }
@@ -721,6 +739,12 @@ void WalletSynchronizer::stop()
             thread.join();
         }
     }
+
+    {
+    std::lock_guard<std::mutex> lock(m_processedKeyImagesMutex);
+    m_processedKeyImages.clear();
+    }
+
 }
 
 void WalletSynchronizer::reset(uint64_t startHeight)
